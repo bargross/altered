@@ -1,29 +1,53 @@
 ﻿using Altered.Core.Attributes;
-
+using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Altered.Core.Main
 {
-    using System.Reflection;
-
     public static class DiffGenerator
     {
-        public static List<DiffEntry> Generate<T>(T original, T modified)
-            where T : class
+        private static IDictionary<string, List<string>> _propertiesToIgnore;
+
+        private static void ConfigureProperties<TValue>(Expression<Func<TValue, object>>[] propertyIgnoreSelectors)
+        {
+            var propertyNames = new List<string>();
+            var typeName = typeof(TValue).Name;
+
+            foreach(var property in propertyIgnoreSelectors)
+            {
+                var propertyName = GetPropertyName(property);
+
+                propertyNames.Add(propertyName);
+            }
+
+            ConfigureAndIgnore(typeName, propertyNames.ToArray());
+        }
+
+        public static List<DiffEntry> Generate<TValue>(TValue original, TValue modified, params Expression<Func<TValue, object>>[] propertyIgnoreSelectors)
+            where TValue : class
         {
             if (original == null && modified == null) return new List<DiffEntry>();
             if (original == null) throw new ArgumentNullException(nameof(original));
             if (modified == null) throw new ArgumentNullException(nameof(modified));
 
+            if (propertyIgnoreSelectors.Any())
+            {
+                ConfigureProperties(propertyIgnoreSelectors);
+            }
+
             var diffs = new List<DiffEntry>();
-            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            var properties = typeof(TValue).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+            var typeName = typeof(TValue).Name;
 
             foreach (var prop in properties)
             {
-                // Skip properties with [IgnoreInDiff] attribute
                 if (prop.GetCustomAttribute<IgnoreInDiffAttribute>() != null)
                     continue;
 
-                // Skip properties without a public getter
+                if (_propertiesToIgnore != null && _propertiesToIgnore.ContainsKey(typeName) && _propertiesToIgnore[typeName].Contains(prop.Name))
+                    continue;
+
                 if (!prop.CanRead) continue;
 
                 var oldValue = prop.GetValue(original);
@@ -44,16 +68,70 @@ namespace Altered.Core.Main
             return diffs;
         }
 
-        private static bool AreEqual(object a, object b)
+        public static void Configure<TValue>()
         {
-            // Both null
-            if (a == null && b == null) return true;
+            _propertiesToIgnore = new Dictionary<string, List<string>>();
 
-            // One null, one not
-            if (a == null || b == null) return false;
+            var genericTypeName = typeof(TValue).Name;
 
-            // Value types and strings
-            return a.Equals(b);
+            _propertiesToIgnore.Add(genericTypeName, new List<string>());
+        }
+
+        public static void ConfigureAndIgnore(string typeName, params string[] properties)
+        {
+            if (_propertiesToIgnore == null)
+            {
+                _propertiesToIgnore = new Dictionary<string, List<string>>
+                {
+                    { typeName, properties.ToList() }
+                };
+            }
+            else
+            {
+                _propertiesToIgnore[typeName].AddRange(properties);
+            }
+        }
+
+        public static void Ignore<TValue>(Expression<Func<TValue, object>> propertyIgnoreSelector)
+        {
+            if (_propertiesToIgnore == null)
+            {
+                throw new ArgumentNullException(nameof(propertyIgnoreSelector));
+            }
+
+            var typeName = typeof(TValue).Name;
+            if (!_propertiesToIgnore.ContainsKey(typeof(TValue).Name))
+            {
+                throw new ArgumentException($"Type {typeName} has not been configured, call Configure<T> before ignore");
+            }
+
+            var propertyName = GetPropertyName(propertyIgnoreSelector);
+
+            _propertiesToIgnore[typeName].Add(propertyName);
+        }
+
+        private static string GetPropertyName<TValue>(Expression<Func<TValue, object>> expression)
+        {
+            switch (expression.Body)
+            {
+                case MemberExpression memberExpression:
+                    return memberExpression.Member.Name;
+
+                case UnaryExpression unaryExpression when unaryExpression.Operand is MemberExpression memberExpression:
+                    return memberExpression.Member.Name;
+
+                default:
+                    throw new ArgumentException($"Expression '{expression}' does not refer to a property");
+            }
+        }
+
+        private static bool AreEqual(object original, object modified)
+        {
+            if (original == null && modified == null) return true;
+
+            if (original == null || modified == null) return false;
+
+            return original.Equals(modified);
         }
     }
 }

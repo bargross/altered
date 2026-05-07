@@ -36,8 +36,53 @@ namespace Altered.Tests.Main
 
             var diffs = DiffGenerator.Generate(original, modified);
 
+            Assert.Empty(diffs);
+        }
+
+        [Fact]
+        public void Ignore_CallWithoutUsingConfigure_ThrowsArgumentException()
+        {
+            Assert.Throws<ArgumentNullException>(() => DiffGenerator.Ignore<Person>(x => x.Id));
+        }
+
+        [Fact]
+        public void Generate_WithIgnoredCalledOnProperty_SkipsIt()
+        {
+            var original = new Person { Id = 1, Name = "Alice" };
+            var modified = new Person { Id = 2, Name = "Alice" };
+
+            DiffGenerator.Configure<Person>();
+
+            DiffGenerator.Ignore<Person>(x => x.Id);
+
+            var diffs = DiffGenerator.Generate(original, modified);
+
+            Assert.Empty(diffs);
+        }
+
+        [Fact]
+        public void Generate_WithConfigureAndIgnoreCalledOnProperty_SkipsIt()
+        {
+            var original = new Person { Id = 1, Name = "Alice" };
+            var modified = new Person { Id = 2, Name = "Alice" };
+
+            DiffGenerator.ConfigureAndIgnore("Person", "Id");
+
+            var diffs = DiffGenerator.Generate(original, modified);
+
+            Assert.Empty(diffs);
+        }
+
+        [Fact]
+        public void Generate_WithPropertyIgnored_SkipsIt()
+        {
+            var original = new Person { Id = 1, Name = "Alice" };
+            var modified = new Person { Id = 2, Name = "Alice" };
+
+            var diffs = DiffGenerator.Generate(original, modified,
+                p => p.Name);
+
             Assert.Single(diffs);
-            Assert.Equal("Name", diffs[0].PropertyName);
         }
 
         [Fact]
