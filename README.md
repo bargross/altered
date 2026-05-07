@@ -1,10 +1,10 @@
-# ObjectDiff
+# Altered
 
 A lightweight .NET library for detecting and applying differences between objects.
 
 ## What is it?
 
-ObjectDiff tells you what changed between two objects of the same type. It generates a list of property differences (name, old value, new value) that you can inspect, store, or apply to another object.
+Altered tells you what changed between two objects of the same type. It generates a list of property differences (name, old value, new value) that you can inspect, store, or apply to another object.
 
 ## Why is it useful?
 
@@ -14,7 +14,7 @@ Ever needed to:
 - Implement undo/redo functionality?
 - Create a patch endpoint without writing manual property comparisons?
 
-ObjectDiff handles this automatically using reflection. No more writing `if (old.Name != new.Name)` for every property.
+Altered handles this automatically using reflection. No more writing `if (old.Name != new.Name)` for every property.
 
 ## Features
 
