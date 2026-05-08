@@ -8,12 +8,17 @@ namespace Altered.Core.Main
     public static class DiffGenerator
     {
         private static TypeConfigurationManager? _typeConfiguratorManager;
+        private static ComparerManager? _comparerManager;
 
-        public static void Configure<TValue>() where TValue : class
+        public static void Configure<TValue>(Action<TypeConfigurator> configure) where TValue : class
         {
             _typeConfiguratorManager = new TypeConfigurationManager();
 
-            _typeConfiguratorManager.Configure<TValue>();
+            var configurator = new TypeConfigurator();
+
+            configure.Invoke(configurator);
+
+            _typeConfiguratorManager.Configure<TValue>(configurator);
         }
 
         public static void Configure<TValue>(TypeConfigurator configurator) where TValue : class
@@ -21,6 +26,16 @@ namespace Altered.Core.Main
             _typeConfiguratorManager = new TypeConfigurationManager();
 
             _typeConfiguratorManager.Configure<TValue>(configurator);
+        }
+
+        public static void RegisterComparer<TValue>(Func<TValue, TValue, bool> customComparer)
+        {
+            if (customComparer == null)
+                throw new ArgumentNullException(nameof(customComparer));
+
+            _comparerManager = new ComparerManager();
+
+            _comparerManager.Register(customComparer);
         }
 
         public static List<DiffEntry> Generate<TValue>(TValue original, TValue modified, params Expression<Func<TValue, object>>[] propertyIgnoreSelectors)
@@ -79,6 +94,14 @@ namespace Altered.Core.Main
             if (original == null && modified == null) return true;
 
             if (original == null || modified == null) return false;
+
+            var type = original.GetType();
+            if (_comparerManager != null && _comparerManager.IsRegistered(type))
+            {
+                var comparer = _comparerManager.Get(type);
+
+                return (bool)comparer.DynamicInvoke(original, modified);
+            }
 
             return original.Equals(modified);
         }

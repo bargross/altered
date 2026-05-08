@@ -2,7 +2,7 @@
 
 namespace Altered.Core.Configure
 {
-    public class TypeConfigurationManager : ITypeConfigurationManager
+    internal class TypeConfigurationManager : ITypeConfigurationManager
     {
         private readonly IDictionary<Type, TypeConfigurator> _ignoredPropertiesByType;
 
