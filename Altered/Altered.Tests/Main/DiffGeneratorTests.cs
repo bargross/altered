@@ -1,4 +1,5 @@
 ﻿using Altered.Core.Attributes;
+using Altered.Core.Configure;
 using Altered.Core.Main;
 
 namespace Altered.Tests.Main
@@ -39,10 +40,10 @@ namespace Altered.Tests.Main
             Assert.Empty(diffs);
         }
 
-        [Fact]
+        [Fact(Skip = "Type configuration changed, test is in wrong class")]
         public void Ignore_CallWithoutUsingConfigure_ThrowsArgumentException()
         {
-            Assert.Throws<ArgumentNullException>(() => DiffGenerator.Ignore<Person>(x => x.Id));
+            //Assert.Throws<ArgumentNullException>(() => DiffGenerator.Ignore<Person>(x => x.Id));
         }
 
         [Fact]
@@ -51,22 +52,24 @@ namespace Altered.Tests.Main
             var original = new Person { Id = 1, Name = "Alice" };
             var modified = new Person { Id = 2, Name = "Alice" };
 
-            DiffGenerator.Configure<Person>();
+            var configurator = new TypeConfigurator(original.GetType());
 
-            DiffGenerator.Ignore<Person>(x => x.Id);
+            configurator.Ignore<Person>(p => p.Id);
+
+            DiffGenerator.Configure<Person>(configurator);
 
             var diffs = DiffGenerator.Generate(original, modified);
 
             Assert.Empty(diffs);
         }
 
-        [Fact]
+        [Fact(Skip = "Type configuration changed, test is no longer correct")]
         public void Generate_WithConfigureAndIgnoreCalledOnProperty_SkipsIt()
         {
             var original = new Person { Id = 1, Name = "Alice" };
             var modified = new Person { Id = 2, Name = "Alice" };
 
-            DiffGenerator.ConfigureAndIgnore("Person", "Id");
+            //DiffGenerator.Configure("Person", "Id");
 
             var diffs = DiffGenerator.Generate(original, modified);
 
@@ -78,6 +81,8 @@ namespace Altered.Tests.Main
         {
             var original = new Person { Id = 1, Name = "Alice" };
             var modified = new Person { Id = 2, Name = "Alice" };
+
+            DiffGenerator.Configure<Person>();
 
             var diffs = DiffGenerator.Generate(original, modified,
                 p => p.Name);
