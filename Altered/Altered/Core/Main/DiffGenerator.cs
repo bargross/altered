@@ -1,29 +1,59 @@
 ﻿using Altered.Core.Attributes;
-
+using Altered.Core.Configure;
+using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Altered.Core.Main
 {
-    using System.Reflection;
-
     public static class DiffGenerator
     {
-        public static List<DiffEntry> Generate<T>(T original, T modified)
-            where T : class
-        {
-            if (original == null && modified == null) return new List<DiffEntry>();
-            if (original == null) throw new ArgumentNullException(nameof(original));
-            if (modified == null) throw new ArgumentNullException(nameof(modified));
+        private static TypeConfigurationManager? _typeConfiguratorManager;
 
-            var diffs = new List<DiffEntry>();
-            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+        public static void Configure<TValue>() where TValue : class
+        {
+            _typeConfiguratorManager = new TypeConfigurationManager();
+
+            _typeConfiguratorManager.Configure<TValue>();
+        }
+
+        public static void Configure<TValue>(TypeConfigurator configurator) where TValue : class
+        {
+            _typeConfiguratorManager = new TypeConfigurationManager();
+
+            _typeConfiguratorManager.Configure<TValue>(configurator);
+        }
+
+        public static List<DiffEntry> Generate<TValue>(TValue original, TValue modified, params Expression<Func<TValue, object>>[] propertyIgnoreSelectors)
+            where TValue : class
+        {
+            if (original == null && modified == null) 
+                return new List<DiffEntry>();
+            
+            if (original == null) 
+                throw new ArgumentNullException(nameof(original));
+            
+            if (modified == null) 
+                throw new ArgumentNullException(nameof(modified));
+
+            if (propertyIgnoreSelectors.Any())
+            {
+                if (_typeConfiguratorManager == null)
+                    _typeConfiguratorManager = new TypeConfigurationManager();
+
+                _typeConfiguratorManager.IgnoreProperties(propertyIgnoreSelectors);
+            }
+
+            var differentEntries = new List<DiffEntry>();
+            var properties = typeof(TValue).GetProperties(BindingFlags.Public | BindingFlags.Instance);
 
             foreach (var prop in properties)
             {
-                // Skip properties with [IgnoreInDiff] attribute
                 if (prop.GetCustomAttribute<IgnoreInDiffAttribute>() != null)
                     continue;
 
-                // Skip properties without a public getter
+                if (_typeConfiguratorManager != null && _typeConfiguratorManager.IsTypeConfigured<TValue>() && _typeConfiguratorManager.PropertyIsIgnored<TValue>(prop.Name))
+                    continue;
+
                 if (!prop.CanRead) continue;
 
                 var oldValue = prop.GetValue(original);
@@ -32,7 +62,7 @@ namespace Altered.Core.Main
                 // Simple value comparison
                 if (!AreEqual(oldValue, newValue))
                 {
-                    diffs.Add(new DiffEntry
+                    differentEntries.Add(new DiffEntry
                     {
                         PropertyName = prop.Name,
                         OldValue = oldValue,
@@ -41,19 +71,16 @@ namespace Altered.Core.Main
                 }
             }
 
-            return diffs;
+            return differentEntries;
         }
 
-        private static bool AreEqual(object a, object b)
+        private static bool AreEqual(object original, object modified)
         {
-            // Both null
-            if (a == null && b == null) return true;
+            if (original == null && modified == null) return true;
 
-            // One null, one not
-            if (a == null || b == null) return false;
+            if (original == null || modified == null) return false;
 
-            // Value types and strings
-            return a.Equals(b);
+            return original.Equals(modified);
         }
     }
 }

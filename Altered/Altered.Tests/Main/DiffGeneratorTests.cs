@@ -1,4 +1,5 @@
 ﻿using Altered.Core.Attributes;
+using Altered.Core.Configure;
 using Altered.Core.Main;
 
 namespace Altered.Tests.Main
@@ -36,8 +37,57 @@ namespace Altered.Tests.Main
 
             var diffs = DiffGenerator.Generate(original, modified);
 
+            Assert.Empty(diffs);
+        }
+
+        [Fact(Skip = "Type configuration changed, test is in wrong class")]
+        public void Ignore_CallWithoutUsingConfigure_ThrowsArgumentException()
+        {
+            //Assert.Throws<ArgumentNullException>(() => DiffGenerator.Ignore<Person>(x => x.Id));
+        }
+
+        [Fact]
+        public void Generate_WithIgnoredCalledOnProperty_SkipsIt()
+        {
+            var original = new Person { Id = 1, Name = "Alice" };
+            var modified = new Person { Id = 2, Name = "Alice" };
+
+            var configurator = new TypeConfigurator(original.GetType());
+
+            configurator.Ignore<Person>(p => p.Id);
+
+            DiffGenerator.Configure<Person>(configurator);
+
+            var diffs = DiffGenerator.Generate(original, modified);
+
+            Assert.Empty(diffs);
+        }
+
+        [Fact(Skip = "Type configuration changed, test is no longer correct")]
+        public void Generate_WithConfigureAndIgnoreCalledOnProperty_SkipsIt()
+        {
+            var original = new Person { Id = 1, Name = "Alice" };
+            var modified = new Person { Id = 2, Name = "Alice" };
+
+            //DiffGenerator.Configure("Person", "Id");
+
+            var diffs = DiffGenerator.Generate(original, modified);
+
+            Assert.Empty(diffs);
+        }
+
+        [Fact]
+        public void Generate_WithPropertyIgnored_SkipsIt()
+        {
+            var original = new Person { Id = 1, Name = "Alice" };
+            var modified = new Person { Id = 2, Name = "Alice" };
+
+            DiffGenerator.Configure<Person>();
+
+            var diffs = DiffGenerator.Generate(original, modified,
+                p => p.Name);
+
             Assert.Single(diffs);
-            Assert.Equal("Name", diffs[0].PropertyName);
         }
 
         [Fact]

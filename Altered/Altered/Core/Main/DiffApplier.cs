@@ -4,6 +4,7 @@ namespace Altered.Core.Main
 {
     public static class DiffApplier
     {
+        //public static 
         public static void Apply<T>(T target, List<DiffEntry> diffs)
             where T : class
         {
@@ -16,11 +17,11 @@ namespace Altered.Core.Main
             if (diffs.Any(x => string.IsNullOrWhiteSpace(x.PropertyName))) throw new ArgumentException("Different entries has entry with property name as null, empty or white space in list.");
 
             var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            var propertyDict = properties.ToDictionary(p => p.Name, p => p);
+            var propertiesByName = properties.ToDictionary(p => p.Name, p => p);
 
             foreach (var diff in diffs)
             {
-                if (!propertyDict.TryGetValue(diff.PropertyName, out var prop))
+                if (!propertiesByName.TryGetValue(diff.PropertyName, out var prop))
                     continue;
 
                 if (!prop.CanWrite)
