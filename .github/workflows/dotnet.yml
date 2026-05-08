@@ -16,6 +16,18 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
+  
+    - name: Debug - List directory structure
+      run: |
+        echo "Root directory contents:"
+        ls -la
+        echo ""
+        echo "Altered directory contents:"
+        ls -la ./Altered
+        echo ""
+        echo "Looking for .sln files:"
+        find . -name "*.sln" -type f
+      shell: bash
     
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -32,3 +44,4 @@ jobs:
     
     - name: Run tests
       run: dotnet test --no-build --configuration Release --verbosity normal
+      working-directory: ./Altered
