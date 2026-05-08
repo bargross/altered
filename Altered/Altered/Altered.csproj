@@ -6,6 +6,17 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <PackageId>altered</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Leonardo M.</Authors>
+    <Description>A lightweight .NET library for detecting and applying differences between objects</Description>
+    <PackageLicenseExpression>APACHE</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/bargross/altered</RepositoryUrl>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
   <ItemGroup>
     <Folder Include="Core\Attributes\" />
     <Folder Include="Core\Main\" />
