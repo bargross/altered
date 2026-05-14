@@ -1,3 +1,6 @@
+[![NuGet](https://img.shields.io/nuget/v/ZeroNull)](https://www.nuget.org/packages/Altered)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 # Altered
 
 A lightweight .NET library for detecting and applying differences between objects.
