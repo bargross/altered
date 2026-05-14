@@ -63,10 +63,7 @@ namespace Altered.Core.Configure
 
         public ITypeConfigurator Ignore<TValue>(Expression<Func<TValue, object>> propertyIgnoreSelector)
         {
-            if (!_isExclusion)
-            {
-                ValidateConfigurationType(false, true);
-            }
+            ValidateConfigurationType(true, false);
 
             _propertiesToIgnore.Add(propertyIgnoreSelector.GetPropertyName());
 
@@ -75,20 +72,14 @@ namespace Altered.Core.Configure
 
         public ITypeConfigurator IgnoreMany<TValue>(params Expression<Func<TValue, object>>[] propertyIgnoreSelectors)
         {
-            if (!_isExclusion)
-            {
-                ValidateConfigurationType(false, true);
-            }
+            ValidateConfigurationType(true, false);
 
             return AddToCollection(_propertiesToIgnore, propertyIgnoreSelectors);
         }
 
         public ITypeConfigurator Include<TValue>(Expression<Func<TValue, object>> propertyIgnoreSelector)
         {
-            if (!_isInclusion)
-            {    
-                ValidateConfigurationType(false, true);
-            }
+            ValidateConfigurationType(false, true);
 
             _propertiesToInclude.Add(propertyIgnoreSelector.GetPropertyName());
 
@@ -97,10 +88,7 @@ namespace Altered.Core.Configure
 
         public ITypeConfigurator IncludeMany<TValue>(params Expression<Func<TValue, object>>[] propertyIncludeSelectors)
         {
-            if (!_isInclusion)
-            {
-                ValidateConfigurationType(false, true);
-            }
+            ValidateConfigurationType(false, true);
 
             return AddToCollection(_propertiesToInclude, propertyIncludeSelectors);
         }
@@ -119,7 +107,12 @@ namespace Altered.Core.Configure
                 _isExclusion = exclusion;
                 _isInclusion = inclusion;
             }
-            else throw new ArgumentException("Cannot ignore and include properties simmultaneously.");
+
+            if (_isInclusion && exclusion)
+                throw new ArgumentException("Cannot ignore when already including properties.");
+
+            if (_isExclusion && inclusion)
+                throw new ArgumentException("Cannot include when ignoring properties.");
         }
 
         private ITypeConfigurator AddToCollection<TValue>(HashSet<string> collection, params Expression<Func<TValue, object>>[] propertyIgnoreSelectors)

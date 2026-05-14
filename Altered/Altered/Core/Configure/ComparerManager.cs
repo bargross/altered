@@ -27,8 +27,8 @@
         {
             var type = typeof(TValue);
 
-            if (_customComparers.ContainsKey(type))
-                throw new ArgumentException("No Comparer for type {type.Name} has been registered.");
+            if (!_customComparers.ContainsKey(type))
+                throw new ArgumentException($"No Comparer for type {type.Name} has been registered.");
 
             _customComparers[type] = customComparer;
         }
@@ -40,8 +40,8 @@
 
         public Delegate Get(Type type)
         {
-            if (_customComparers.ContainsKey(type))
-                throw new ArgumentException("No Comparer for type {type.Name} has been registered.");
+            if (!_customComparers.ContainsKey(type))
+                throw new ArgumentException($"No Comparer for type {type.Name} has been registered.");
 
             return _customComparers[type];
         }

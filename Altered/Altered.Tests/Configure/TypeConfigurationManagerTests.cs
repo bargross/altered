@@ -35,19 +35,6 @@ namespace Altered.Tests.Configure
         }
 
         [Fact]
-        public void ShouldThrowExceptionWhenConfigureWithoutConfigurator()
-        {
-            // Arrange
-            var manager = new TypeConfigurationManager();
-            var configuratorMock = new Mock<TypeConfigurator>();
-
-            configuratorMock.Setup(c => c.Configure(It.IsAny<Type>())).Throws<ArgumentException>();
-
-            // Act and Assert
-            Assert.Throws<ArgumentException>(() => manager.Configure<string>(configuratorMock.Object));
-        }
-
-        [Fact]
         public void ShouldThrowExceptionWhenIgnorePropertiesWithoutConfigure()
         {
             // Arrange

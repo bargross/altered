@@ -1,7 +1,8 @@
-﻿using System.Linq.Expressions;
-using Altered.Core.Configure;
-using Moq;
+﻿using Altered.Core.Configure;
 using Altered.Core.Extensions;
+using Altered.Tests.Main;
+using Moq;
+using System.Linq.Expressions;
 
 namespace Altered.Tests.Configure
 {
@@ -39,7 +40,7 @@ namespace Altered.Tests.Configure
         {
             // Arrange
             var configurator = new TypeConfigurator();
-            var expression = Mock.Of<Expression<Func<string, object>>>();
+            Expression<Func<string, object>> expression = x => x.Length;
 
             // Act
             configurator.Ignore(expression);
@@ -53,15 +54,15 @@ namespace Altered.Tests.Configure
         {
             // Arrange
             var configurator = new TypeConfigurator();
-            var expressions = new[] { Mock.Of<Expression<Func<string, object>>>() };
-            var expression2 = Mock.Of<Expression<Func<string, object>>>();
+            Expression<Func<string, object>> expression = x => x.Length;
+            var expressions = new[] { expression };
 
             // Act
             configurator.IgnoreMany(expressions);
 
             // Assert
             Assert.Contains(expressions[0].GetPropertyName(), configurator.GetIgnoredProperties());
-            Assert.Contains(expression2.GetPropertyName(), configurator.GetIgnoredProperties());
+            Assert.Contains(expression.GetPropertyName(), configurator.GetIgnoredProperties());
         }
 
         [Fact]
@@ -69,7 +70,7 @@ namespace Altered.Tests.Configure
         {
             // Arrange
             var configurator = new TypeConfigurator();
-            var expression = Mock.Of<Expression<Func<string, object>>>();
+            Expression<Func<string, object>> expression = x => x.Length;
 
             // Act
             configurator.Include(expression);
@@ -83,26 +84,45 @@ namespace Altered.Tests.Configure
         {
             // Arrange
             var configurator = new TypeConfigurator();
-            var expressions = new[] { Mock.Of<Expression<Func<string, object>>>() };
-            var expression2 = Mock.Of<Expression<Func<string, object>>>();
+            Expression<Func<string, object>> expression = x => x.Length;
+            var expressions = new[] { expression };
 
             // Act
             configurator.IncludeMany(expressions);
 
             // Assert
             Assert.Contains(expressions[0].GetPropertyName(), configurator.GetIncludedProperties());
-            Assert.Contains(expression2.GetPropertyName(), configurator.GetIncludedProperties());
+            Assert.Contains(expression.GetPropertyName(), configurator.GetIncludedProperties());
         }
 
         [Fact]
-        public void ShouldThrowArgumentExceptionWhenIgnoringAndIncludingPropertiesSimultaneously()
+        public void ShouldThrowArgumentExceptionWhenIgnoringAndThenIncludingPropertiesSimultaneously()
         {
             // Arrange
             var configurator = new TypeConfigurator();
+            Expression<Func<string, object>> expression = x => x.Length;
+
+            configurator.Ignore(expression);
+
+            Action action = () => configurator.Include(expression);
 
             // Act and Assert
-            Assert.Throws<ArgumentException>(() => configurator.Ignore(Mock.Of<Expression<Func<string, object>>>()));
-            Assert.Throws<ArgumentException>(() => configurator.Include(Mock.Of<Expression<Func<string, object>>>()));
+            Assert.Throws<ArgumentException>(action);
+        }
+
+        [Fact]
+        public void ShouldThrowArgumentExceptionWhenIncludingAndThenIgnoringPropertiesSimultaneously()
+        {
+            // Arrange
+            var configurator = new TypeConfigurator();
+            Expression<Func<string, object>> expression = x => x.Length;
+
+            configurator.Include(expression);
+
+            Action action = () => configurator.Ignore(expression);
+
+            // Act and Assert
+            Assert.Throws<ArgumentException>(action);
         }
 
         [Fact]
@@ -110,7 +130,7 @@ namespace Altered.Tests.Configure
         {
             // Arrange
             var configurator = new TypeConfigurator();
-            var expression = Mock.Of<Expression<Func<string, object>>>();
+            Expression<Func<string, object>> expression = x => x.Length;
 
             // Act
             configurator.Ignore(expression);
@@ -125,7 +145,7 @@ namespace Altered.Tests.Configure
         {
             // Arrange
             var configurator = new TypeConfigurator();
-            var expression = Mock.Of<Expression<Func<string, object>>>();
+            Expression<Func<string, object>> expression = x => x.Length;
 
             // Act
             configurator.Ignore(expression);
@@ -139,7 +159,7 @@ namespace Altered.Tests.Configure
         {
             // Arrange
             var configurator = new TypeConfigurator();
-            var expression = Mock.Of<Expression<Func<string, object>>>();
+            Expression<Func<string, object>> expression = x => x.Length;
 
             // Act
             configurator.Include(expression);
