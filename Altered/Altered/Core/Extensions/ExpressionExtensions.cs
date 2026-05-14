@@ -2,7 +2,7 @@
 
 namespace Altered.Core.Extensions
 {
-    public static class ExpressionExtensions
+    internal static class ExpressionExtensions
     {
         public static string GetPropertyName<TValue>(this Expression<Func<TValue, object>> propertySelector)
         {

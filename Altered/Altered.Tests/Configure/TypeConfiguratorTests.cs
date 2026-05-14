@@ -1,7 +1,5 @@
 ﻿using Altered.Core.Configure;
 using Altered.Core.Extensions;
-using Altered.Tests.Main;
-using Moq;
 using System.Linq.Expressions;
 
 namespace Altered.Tests.Configure
