@@ -10,6 +10,18 @@ namespace Altered.Core.Main
         private static TypeConfigurationManager? _typeConfiguratorManager;
         private static ComparerManager? _comparerManager;
 
+        public static bool Ignore { get; set; } = false;
+        public static bool Include { get; set; } = false;
+
+        public static void Configure<TValue>() where TValue : class
+        {
+            _typeConfiguratorManager = new TypeConfigurationManager();
+
+            var configurator = new TypeConfigurator();
+
+            _typeConfiguratorManager.Configure<TValue>(configurator);
+        }
+
         public static void Configure<TValue>(Action<TypeConfigurator> configure) where TValue : class
         {
             _typeConfiguratorManager = new TypeConfigurationManager();
@@ -38,7 +50,7 @@ namespace Altered.Core.Main
             _comparerManager.Register(customComparer);
         }
 
-        public static List<DiffEntry> Generate<TValue>(TValue original, TValue modified, params Expression<Func<TValue, object>>[] propertyIgnoreSelectors)
+        public static List<DiffEntry> Generate<TValue>(TValue original, TValue modified, params Expression<Func<TValue, object>>[] propertySelectors)
             where TValue : class
         {
             if (original == null && modified == null) 
@@ -50,13 +62,27 @@ namespace Altered.Core.Main
             if (modified == null) 
                 throw new ArgumentNullException(nameof(modified));
 
-            if (propertyIgnoreSelectors.Any())
+            var propertySelectorsProvided = propertySelectors.Any();
+            if (propertySelectorsProvided)
             {
-                if (_typeConfiguratorManager == null)
+                if (_typeConfiguratorManager == null) 
+                {
                     _typeConfiguratorManager = new TypeConfigurationManager();
 
-                _typeConfiguratorManager.IgnoreProperties(propertyIgnoreSelectors);
+                    _typeConfiguratorManager.Configure<TValue>();
+                }
+
+                if (!_typeConfiguratorManager.IsTypeConfigured<TValue>())
+                {
+                    _typeConfiguratorManager.Configure<TValue>();
+                }
             }
+
+            if (Ignore && !Include && propertySelectorsProvided)
+                _typeConfiguratorManager.IgnoreProperties(propertySelectors);
+            
+            if (Include && !Ignore && propertySelectorsProvided)
+                _typeConfiguratorManager.IncludeProperties(propertySelectors);
 
             var differentEntries = new List<DiffEntry>();
             var properties = typeof(TValue).GetProperties(BindingFlags.Public | BindingFlags.Instance);
@@ -66,7 +92,12 @@ namespace Altered.Core.Main
                 if (prop.GetCustomAttribute<IgnoreInDiffAttribute>() != null)
                     continue;
 
-                if (_typeConfiguratorManager != null && _typeConfiguratorManager.IsTypeConfigured<TValue>() && _typeConfiguratorManager.PropertyIsIgnored<TValue>(prop.Name))
+                var propertyIsIgnored = _typeConfiguratorManager != null && _typeConfiguratorManager.IsTypeConfigured<TValue>() && _typeConfiguratorManager.PropertyIsIgnored<TValue>(prop.Name);
+                if (propertyIsIgnored)
+                    continue;
+
+                var propertyIsNotIncluded = _typeConfiguratorManager != null && _typeConfiguratorManager.IsTypeConfigured<TValue>() && _typeConfiguratorManager.PropertyIsIncluded<TValue>(prop.Name);
+                if (propertyIsNotIncluded)
                     continue;
 
                 if (!prop.CanRead) continue;
@@ -87,6 +118,14 @@ namespace Altered.Core.Main
             }
 
             return differentEntries;
+        }
+
+        public static void ClearAll()
+        {
+            if (_typeConfiguratorManager != null)
+            {
+                _typeConfiguratorManager.ClearAll();
+            }
         }
 
         private static bool AreEqual(object original, object modified)

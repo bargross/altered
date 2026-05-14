@@ -1,11 +1,16 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36109.1 d17.14
+VisualStudioVersion = 17.14.36109.1
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Altered", "Altered\Altered.csproj", "{A02D135F-4A0A-49E7-84AB-E6FBAFA08B4E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Altered", "Altered\Altered.csproj", "{A02D135F-4A0A-49E7-84AB-E6FBAFA08B4E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Altered.Tests", "Altered.Tests\Altered.Tests.csproj", "{ECB0A523-8F64-4FE3-9851-86AD0D283C9B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Altered.Tests", "Altered.Tests\Altered.Tests.csproj", "{ECB0A523-8F64-4FE3-9851-86AD0D283C9B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".workflows", ".workflows", "{ABF3CADD-0DFF-40F1-A0B4-AAF2C5CF287A}"
+	ProjectSection(SolutionItems) = preProject
+		..\.github\workflows\dotnet.yml = ..\.github\workflows\dotnet.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
