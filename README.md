@@ -89,7 +89,7 @@ Core Features
 - Works with any .NET type (classes, records, structs)
 - No external dependencies
 
-# 🎯 Type Configuration (Per-Type Rules)
+### 🎯 Type Configuration (Per-Type Rules)
 
 Configure diff behavior per type using TypeConfigurator<T>:
 
