@@ -1,4 +1,4 @@
-[![NuGet](https://img.shields.io/nuget/v/ZeroNull)](https://www.nuget.org/packages/Altered)
+[![NuGet](https://img.shields.io/nuget/v/ZeroNull)](https://www.nuget.org/packages/altered)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 # Altered
