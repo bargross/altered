@@ -2,7 +2,7 @@
 
 namespace Altered.Core.Configure
 {
-    public interface ITypeConfigurationManager
+    internal interface ITypeConfigurationManager
     {
         ITypeConfigurationManager Configure<TValue>() where TValue : class;
         ITypeConfigurationManager Configure<TValue>(TypeConfigurator configurator) where TValue : class;

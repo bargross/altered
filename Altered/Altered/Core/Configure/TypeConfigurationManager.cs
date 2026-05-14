@@ -2,7 +2,7 @@
 
 namespace Altered.Core.Configure
 {
-    public class TypeConfigurationManager : ITypeConfigurationManager
+    internal class TypeConfigurationManager : ITypeConfigurationManager
     {
         private readonly IDictionary<Type, TypeConfigurator> _ignoredPropertiesByType;
 
@@ -47,7 +47,7 @@ namespace Altered.Core.Configure
             var type = typeof(TValue);
 
             if (!_ignoredPropertiesByType.ContainsKey(type))
-                throw new ArgumentException($"Type {type} was not configured, you must call Configure<T> before IgnoreProperties.");
+                throw new ArgumentException($"Type {type} was not configured, you must call Configure before IgnoreProperties.");
 
             var configurator = _ignoredPropertiesByType[type];
 
@@ -56,34 +56,49 @@ namespace Altered.Core.Configure
             return this;
         }
 
-        public bool IsTypeConfigured(Type type)
-        {
-            Validate(type);
-
-            return _ignoredPropertiesByType.ContainsKey(type);
-        }
-
-        public bool IsTypeConfigured<TValue>()
+        public ITypeConfigurationManager IncludeProperties<TValue>(params Expression<Func<TValue, object>>[] propertySelectors) where TValue : class
         {
             var type = typeof(TValue);
 
+            if (!_ignoredPropertiesByType.ContainsKey(type))
+                throw new ArgumentException($"Type {type} was not configured, you must call Configure before IgnoreProperties.");
+
+            var configurator = _ignoredPropertiesByType[type];
+
+            configurator.IncludeMany(propertySelectors);
+
+            return this;
+        }
+        public bool IsTypeConfigured<TValue>() => IsTypeConfigured(typeof(TValue));
+
+        public bool IsTypeConfigured(Type type) => _ignoredPropertiesByType.ContainsKey(type);
+
+        public bool PropertyIsIncluded<TValue>(string propertyName) => PropertyIsIncluded(typeof(TValue), propertyName);
+
+        public bool PropertyIsIncluded(Type type, string propertyName)
+        {
             Validate(type);
 
-            return _ignoredPropertiesByType.ContainsKey(type);
+            return _ignoredPropertiesByType[type].IsIncluded(type, propertyName);
         }
 
-        public bool PropertyIsIgnored<TValue>(string propertyName)
-        {
-            var type = typeof(TValue);
-
-            return PropertyIsIgnored(type, propertyName);
-        }
+        public bool PropertyIsIgnored<TValue>(string propertyName) => PropertyIsIgnored(typeof(TValue), propertyName);
 
         public bool PropertyIsIgnored(Type type, string propertyName)
         {
             Validate(type);
 
             return _ignoredPropertiesByType[type].IsIgnored(type, propertyName);
+        }
+
+        public void ClearAll() => _ignoredPropertiesByType.Clear();
+
+        public void ClearProperties()
+        {
+            foreach (var configuration in _ignoredPropertiesByType)
+            {
+                configuration.Value.Clear();
+            }
         }
 
         private void Validate(Type type)

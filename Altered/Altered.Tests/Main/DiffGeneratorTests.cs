@@ -4,8 +4,13 @@ using Altered.Core.Main;
 
 namespace Altered.Tests.Main
 {
-    public class DiffGeneratorTests
+    public class DiffGeneratorTests: IDisposable
     {
+        public DiffGeneratorTests() 
+        {
+            DiffGenerator.ClearAll();
+        }
+
         [Fact]
         public void Generate_WithNoChanges_ReturnsEmptyList()
         {
@@ -84,10 +89,12 @@ namespace Altered.Tests.Main
 
             DiffGenerator.Configure<Person>();
 
+            DiffGenerator.Ignore = true;
+
             var diffs = DiffGenerator.Generate(original, modified,
                 p => p.Name);
 
-            Assert.Single(diffs);
+             Assert.Single(diffs);
         }
 
         [Fact]
@@ -103,6 +110,11 @@ namespace Altered.Tests.Main
 
             Assert.Equal(31, target.Age);
             Assert.Equal("Alice", target.Name); // Unchanged
+        }
+
+        public void Dispose()
+        {
+            DiffGenerator.ClearAll();
         }
     }
 

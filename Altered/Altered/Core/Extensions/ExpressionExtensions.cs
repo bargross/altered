@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq.Expressions;
 
 namespace Altered.Core.Extensions
 {
-    public static class ExpressionExtensions
+    internal static class ExpressionExtensions
     {
         public static string GetPropertyName<TValue>(this Expression<Func<TValue, object>> propertySelector)
         {
