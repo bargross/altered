@@ -106,7 +106,7 @@ DiffGenerator.Configure<User>(cfg => cfg
     .Ignore(u => u.PasswordHash)
     .Ignore(u => u.TempData));
 ```
-# 🔁 Multiple Configurations
+### 🔁 Multiple Configurations
 Register different configurations for different types:
 
 ```csharp
@@ -124,7 +124,7 @@ DiffGenerator.Configure<Product>(cfg => cfg
 var userChanges = DiffGenerator.Generate(user1, user2);        // Uses User config
 var productChanges = DiffGenerator.Generate(product1, product2); // Uses Product config
 ```
-# 🔍 Custom Comparers
+### 🔍 Custom Comparers
 
 Register custom comparison logic for specific types, overriding the default equality check:
 
@@ -146,7 +146,7 @@ DiffGenerator.RegisterComparer<Address>((a, b) =>
 
 Priority order: Custom comparers have the highest priority, followed by TypeConfigurator ignore rules, then [IgnoreInDiff] attributes, and finally the default equality comparison.
 
-# 🔁 Multiple Configurations
+### 🔁 Multiple Configurations
 Register different configurations for different types:
 
 ```csharp
@@ -165,7 +165,7 @@ var userChanges = DiffGenerator.Generate(user1, user2);        // Uses User conf
 var productChanges = DiffGenerator.Generate(product1, product2); // Uses Product config
 ```
 
-# 📦 JSON-Serializable Output
+### 📦 JSON-Serializable Output
 Built-in JSON support makes Altered perfect for audit trails, API responses, and persistent storage:
 
 ```csharp
@@ -197,7 +197,7 @@ var loaded = await DiffJsonExtensions.ReadFromJsonFileAsync("audit/user123.json"
 var (success, loadedDiffs) = DiffJsonExtensions.TryFromJson(maybeInvalidJson);
 ```
 
-# Ignore Specific Properties
+### Ignore Specific Properties
 Use the [IgnoreInDiff] attribute to mark properties that should be excluded from all diff operations:
 
 ```csharp
@@ -213,7 +213,7 @@ public class Person
 }
 ```
 
-# 🔄 Apply Diffs
+### 🔄 Apply Diffs
 Apply recorded changes to any compatible object:
 
 ```csharp
@@ -227,7 +227,7 @@ DiffApplier.Apply(target, diffs);
 Console.WriteLine(target.Age); // 31
 ```
 
-# 🚀 Complete Example: Audit Logging
+### 🚀 Complete Example: Audit Logging
 Here's a real‑world example showing how these features work together:
 
 ```csharp
