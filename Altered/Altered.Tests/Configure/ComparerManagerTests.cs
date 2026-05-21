@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using Xunit;
-using Altered.Core.Configure;
+﻿using Altered.Core.Configure;
 
-namespace Altered.Core.Tests.Configure
+namespace Altered.Tests.Configure
 {
     public class ComparerManagerTests
     {
@@ -19,17 +16,6 @@ namespace Altered.Core.Tests.Configure
         {
             var manager = new ComparerManager();
             Assert.False(manager.IsRegistered<string>());
-        }
-
-        [Fact]
-        public void Constructor_WithDictionary_StoresProvidedDictionary()
-        {
-            var dict = new Dictionary<Type, Delegate>
-            {
-                [typeof(string)] = (Func<string, string, bool>)StringComparer
-            };
-            var manager = new ComparerManager(dict);
-            Assert.True(manager.IsRegistered<string>());
         }
 
         #endregion

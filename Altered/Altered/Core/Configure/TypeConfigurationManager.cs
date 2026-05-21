@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Linq.Expressions;
 
 namespace Altered.Core.Configure
@@ -87,6 +86,25 @@ namespace Altered.Core.Configure
             Validate(type);
 
             return _ignoredPropertiesByType[type].IsIgnored(type, propertyName);
+        }
+
+        internal bool IsUsingInclude<TValue>() => IsTypeConfigured<TValue>() && _ignoredPropertiesByType[typeof(TValue)]._isInclusion;
+        internal bool IsUsingIgnore<TValue>() => IsTypeConfigured<TValue>() && _ignoredPropertiesByType[typeof(TValue)]._isExclusion;
+
+        internal void BlackList(Type type, bool value)
+        {
+            if (IsTypeConfigured(type))
+                _ignoredPropertiesByType[type].BlackList(value);
+
+            else throw new InvalidOperationException($"Type {type.Name} not configured.");
+        }
+
+        internal void WhiteList(Type type, bool value)
+        {
+            if (IsTypeConfigured(type))
+                _ignoredPropertiesByType[type].WhiteList(value);
+
+            else throw new InvalidOperationException($"Type {type.Name} not configured.");
         }
 
         public void ClearAll() => _ignoredPropertiesByType.Clear();

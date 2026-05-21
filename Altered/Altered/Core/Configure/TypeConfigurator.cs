@@ -115,6 +115,20 @@ namespace Altered.Core.Configure
         public ITypeConfigurator IncludeMany<TValue>(params Expression<Func<TValue, object>>[] propertyIncludeSelectors) => IncludeManyProperties(propertyIncludeSelectors);
 
         /// <summary>
+        /// ensure internal usage of properties black list properties (ignore), calling Ignore sets it as well, this is optional.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public ITypeConfigurator BlackList(bool value) => BlackListProperties(value);
+
+        /// <summary>
+        /// ensure internal usage of properties white lists properties (include), calling Include sets it as well, this is optional.
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public ITypeConfigurator WhiteList(bool value) => WhiteListProperties(value);
+
+        /// <summary>
         /// Removes all properties from the current instance.
         /// </summary>
         public void Clear() => ClearAllProperties();
@@ -142,7 +156,14 @@ namespace Altered.Core.Configure
 
         internal ITypeConfigurator IgnoreManyProperties<TValue>(params Expression<Func<TValue, object>>[] propertyIgnoreSelectors)
         {
-            ValidateConfigurationType(true, false);
+            var type = typeof(TValue);
+            if (_type == null)
+                _type = type;
+            
+            if (_type != type) 
+                throw new ArgumentException($"Type given does not match configured type {_type.Name}");
+
+            BlackListProperties(true);
 
             AddToCollection(_propertiesToIgnore, propertyIgnoreSelectors);
 
@@ -151,7 +172,14 @@ namespace Altered.Core.Configure
 
         internal ITypeConfigurator IncludeManyProperties<TValue>(params Expression<Func<TValue, object>>[] propertyIncludeSelectors)
         {
-            ValidateConfigurationType(false, true);
+            var type = typeof(TValue);
+            if (_type == null)
+                _type = type;
+
+            if (_type != type)
+                throw new ArgumentException($"Type given does not match configured type {_type.Name}");
+
+            WhiteListProperties(true);
 
             AddToCollection(_propertiesToInclude, propertyIncludeSelectors);
             
@@ -160,7 +188,12 @@ namespace Altered.Core.Configure
 
         internal ITypeConfigurator ConfigureType(Type type)
         {
-            _type = type;
+            if (_type == null)
+                _type = type;
+
+            else if (_type == type) return this;
+
+            else throw new InvalidCastException($"Type already configured for type {_type.Name}");
 
             return this;
         }
@@ -178,6 +211,32 @@ namespace Altered.Core.Configure
 
             if (_isExclusion && inclusion)
                 throw new ArgumentException("Cannot include when ignoring properties.");
+        }
+
+        internal ITypeConfigurator BlackListProperties(bool value)
+        {
+            if (value == _isExclusion && _isExclusion != _isInclusion)
+                return this;
+
+            if (value && _isInclusion)
+                throw new InvalidOperationException("Cannot whitelist when already using blacklist mode");
+
+            _isExclusion = value;
+
+            return this;
+        }
+
+        internal ITypeConfigurator WhiteListProperties(bool value)
+        {
+            if (value == _isInclusion && _isInclusion !=  _isExclusion)
+                return this;
+
+            if (value && _isExclusion)
+                throw new InvalidOperationException("Cannot whitelist when already using blacklist mode");
+
+            _isInclusion = value;
+
+            return this;
         }
 
         internal ITypeConfigurator AddToCollection<TValue>(ConcurrentBag<string> collection, params Expression<Func<TValue, object>>[] propertyIgnoreSelectors)

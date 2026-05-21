@@ -10,9 +10,6 @@ namespace Altered.Core.Main
         internal static TypeConfigurationManager _typeConfiguratorManager = new();
         internal static ComparerManager _comparerManager = new();
 
-        public static bool Ignore { get; set; } = false;
-        public static bool Include { get; set; } = false;
-
         // -----------------------------------------------------------------------------------------
         // Public API
         // -----------------------------------------------------------------------------------------
@@ -20,19 +17,46 @@ namespace Altered.Core.Main
         public static void Configure<TValue>() where TValue : class
             => ConfigureType<TValue>();
 
+        /// <summary>
+        /// Configures a type using the specified configuration action.
+        /// </summary>
+        /// <typeparam name="TValue">The type to configure. Must be a reference type.</typeparam>
+        /// <param name="configure">The action that defines the configuration for the type.</param>
         public static void Configure<TValue>(Action<TypeConfigurator> configure) where TValue : class
             => ConfigureTypeWithAction<TValue>(configure);
 
+        /// <summary>
+        /// Configures a type using the specified configurator.
+        /// </summary>
+        /// <typeparam name="TValue">The type to configure. Must be a reference type.</typeparam>
+        /// <param name="configurator">The type configurator that defines the configuration for the type.</param>
         public static void Configure<TValue>(TypeConfigurator configurator) where TValue : class
             => ConfigureTypeWithConfigurator<TValue>(configurator);
 
+        /// <summary>
+        /// Registers a custom equality comparer for the specified value type.
+        /// </summary>
+        /// <typeparam name="TValue">The type of values to compare.</typeparam>
+        /// <param name="customComparer">A function that determines whether two values of type TValue are equal.</param>
         public static void RegisterComparer<TValue>(Func<TValue, TValue, bool> customComparer)
             => RegisterCustomComparer(customComparer);
 
-        public static List<DiffEntry> Generate<TValue>(TValue original, TValue modified, params Expression<Func<TValue, object>>[] propertySelectors)
+        /// <summary>
+        /// Compares two objects and returns a list of differences for the specified properties.
+        /// </summary>
+        /// <typeparam name="TValue">The type of the objects to compare.</typeparam>
+        /// <param name="original">The original object.</param>
+        /// <param name="modified">The modified object to compare against the original.</param>
+        /// <param name="ignore">Indicates whether to ignore properties or include if false.</param>
+        /// <param name="propertySelectors">Expressions specifying the properties to include in the comparison.</param>
+        /// <returns>A list of differences between the original and modified objects.</returns>
+        public static List<DiffEntry> Generate<TValue>(TValue original, TValue modified, bool? ignore = null, params Expression<Func<TValue, object>>[] propertySelectors)
             where TValue : class
-            => GenerateDiffs(original, modified, propertySelectors);
+            => GenerateDiffs(original, modified, propertySelectors, ignore);
 
+        /// <summary>
+        /// Removes all configurations.
+        /// </summary>
         public static void ClearAll()
             => ClearAllConfigurations();
 
@@ -44,6 +68,7 @@ namespace Altered.Core.Main
         {
             _typeConfiguratorManager = new TypeConfigurationManager();
             var configurator = new TypeConfigurator();
+
             _typeConfiguratorManager.Configure<TValue>(configurator);
         }
 
@@ -51,13 +76,15 @@ namespace Altered.Core.Main
         {
             _typeConfiguratorManager = new TypeConfigurationManager();
             var configurator = new TypeConfigurator();
+
             configure.Invoke(configurator);
+
             _typeConfiguratorManager.Configure<TValue>(configurator);
         }
 
         internal static void ConfigureTypeWithConfigurator<TValue>(TypeConfigurator configurator) where TValue : class
         {
-            if (configurator == null)
+            if (configurator is null)
                 throw new ArgumentNullException(nameof(configurator));
 
             _typeConfiguratorManager.Configure<TValue>(configurator);
@@ -65,23 +92,32 @@ namespace Altered.Core.Main
 
         internal static void RegisterCustomComparer<TValue>(Func<TValue, TValue, bool> customComparer)
         {
-            if (customComparer == null)
+            if (customComparer is null)
                 throw new ArgumentNullException(nameof(customComparer));
 
             _comparerManager.Register(customComparer);
         }
 
-        internal static List<DiffEntry> GenerateDiffs<TValue>(TValue original, TValue modified, Expression<Func<TValue, object>>[] propertySelectors)
+        internal static List<DiffEntry> GenerateDiffs<TValue>(TValue original, TValue modified, Expression<Func<TValue, object>>[] propertySelectors, bool? ignore = null)
             where TValue : class
         {
-            if (original == null && modified == null)
+            if (original is null && modified is null)
                 return new List<DiffEntry>();
 
-            if (original == null)
+            if (original is null)
                 throw new ArgumentNullException(nameof(original));
 
-            if (modified == null)
+            if (modified is null)
                 throw new ArgumentNullException(nameof(modified));
+
+            if (ignore is null && propertySelectors.Any())
+                throw new InvalidOperationException("Must specify whether to ignore or include properties.");
+
+            if (ignore is true)
+                _typeConfiguratorManager.BlackList(typeof(TValue), true);
+
+            if (ignore is false)
+                _typeConfiguratorManager.WhiteList(typeof(TValue), true);
 
             ApplyPropertySelectors(propertySelectors);
 
@@ -104,14 +140,16 @@ namespace Altered.Core.Main
             where TValue : class
         {
             var selectorsProvided = propertySelectors.Any();
+            if (!selectorsProvided)
+                return;
 
-            if (selectorsProvided && !_typeConfiguratorManager.IsTypeConfigured<TValue>())
+            if (!_typeConfiguratorManager.IsTypeConfigured<TValue>())
                 _typeConfiguratorManager.Configure<TValue>();
 
-            if (Ignore && !Include && selectorsProvided)
+            if (_typeConfiguratorManager.IsUsingIgnore<TValue>())
                 _typeConfiguratorManager.IgnoreProperties(propertySelectors);
 
-            if (Include && !Ignore && selectorsProvided)
+            if (_typeConfiguratorManager.IsUsingInclude<TValue>())
                 _typeConfiguratorManager.IncludeProperties(propertySelectors);
         }
 
@@ -120,14 +158,19 @@ namespace Altered.Core.Main
             if (!prop.CanRead)
                 return true;
 
-            if (prop.GetCustomAttribute<IgnoreInDiffAttribute>() != null)
+            if (prop.GetCustomAttribute<IgnoreInDiffAttribute>() is not null)
                 return true;
 
             if (!_typeConfiguratorManager.IsTypeConfigured<TValue>())
                 return false;
 
-            return _typeConfiguratorManager.PropertyIsIgnored<TValue>(prop.Name)
-                || _typeConfiguratorManager.PropertyIsIncluded<TValue>(prop.Name);
+            if (_typeConfiguratorManager.IsUsingIgnore<TValue>())
+                return _typeConfiguratorManager.PropertyIsIgnored<TValue>(prop.Name);
+
+            if (_typeConfiguratorManager.IsUsingInclude<TValue>())
+                return !_typeConfiguratorManager.PropertyIsIncluded<TValue>(prop.Name);
+
+            return false;
         }
 
         internal static bool TryBuildDiffEntry<TValue>(PropertyInfo prop, TValue original, TValue modified, out DiffEntry? entry)
@@ -158,10 +201,10 @@ namespace Altered.Core.Main
 
         internal static bool AreEqual(object? original, object? modified)
         {
-            if (original == null && modified == null)
+            if (original is null && modified is null)
                 return true;
 
-            if (original == null || modified == null)
+            if (original is null || modified is null)
                 return false;
 
             var type = original.GetType();
@@ -174,8 +217,7 @@ namespace Altered.Core.Main
 
         internal static bool InvokeCustomComparer(Type type, object original, object modified)
         {
-            var comparer = _comparerManager.Get(type)
-                ?? throw new InvalidOperationException($"No comparer registered for type {type.FullName}");
+            var comparer = _comparerManager.Get(type);
 
             var result = comparer.DynamicInvoke(original, modified);
 
