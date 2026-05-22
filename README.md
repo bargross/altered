@@ -109,23 +109,52 @@ DiffGenerator.Configure<User>(cfg => cfg
     .Ignore(u => u.PasswordHash)
     .Ignore(u => u.TempData));
 ```
-### 🔁 Multiple Configurations
-Register different configurations for different types:
+
+## Diff Generation with Explicit Mode
+The `Generate` method now requires a bool ignore parameter when you provide property selectors.
 
 ```csharp
-// Configure User type
+// Blacklist: ignore FirstName and LastName
+var diffs = DiffGenerator.Generate(original, modified, ignore: true,
+    p => p.FirstName, p => p.LastName);
+
+// Whitelist: compare only FirstName and Age
+var diffs = DiffGenerator.Generate(original, modified, ignore: false,
+    p => p.FirstName, p => p.Age);
+```
+If you need to provide property selectors, you must set the ignore flag accordingly, otherwise an exception will be thrown.
+
+if no selectors are provided, the flag will be set and if left null it'll be ignored and the configurator will set it once you use either Ignore or Include.
+
+Otherwise ir performs a diff.
+
+## 🔁 Multiple Configuration & Per‑Type Fluent Configuration (Ignore or Include)
+Configure rules for each type independently – you can ignore properties for one type and include for another, all with a clean fluent API.
+
+```csharp
+// User type: ignore sensitive fields (blacklist mode)
 DiffGenerator.Configure<User>(cfg => cfg
-    .Ignore(u => u.Id)
-    .Ignore(u => u.CreatedAt));
+    .Ignore(u => u.PasswordHash)
+    .Ignore(u => u.LastLoginIP));
 
-// Configure Product type separately
+// Product type: only compare a few fields (whitelist mode)
 DiffGenerator.Configure<Product>(cfg => cfg
-    .Ignore(p => p.SKU)
-    .Ignore(p => p.InternalNotes));
+    .Include(p => p.Id)
+    .Include(p => p.Price));
 
-// Both configurations work automatically when diffing their respective types
+// Address type: a completely different rule set
+DiffGenerator.Configure<Address>(cfg => cfg
+    .Ignore(a => a.ZipCode));
+
+    // Both configurations work automatically when diffing their respective types
 var userChanges = DiffGenerator.Generate(user1, user2);        // Uses User config
 var productChanges = DiffGenerator.Generate(product1, product2); // Uses Product config
+var productChanges = DiffGenerator.Generate(address1, address2); // Uses Address config
+```
+
+**Important:** Once you call `Ignore` (blacklist) or `Include` (whitelist) on a configurator, you cannot switch to the other mode on the same configurator. Attempting to do so throws `InvalidOperationException`.
+However, different types can freely use different modes – they are completely independent.
+
 ```
 ### 🔍 Custom Comparers
 
@@ -260,3 +289,28 @@ if (changes.Any())
     await db.SaveChangesAsync();
 }
 ```
+
+## Breaking Changes (Migration from version 1.0.1 to 1.0.2)
+- `Generate` **now requires** `bool ignore` when property selectors are provided.
+
+```csharp
+// Old
+DiffGenerator.Generate(original, modified, p => p.Name);
+
+// New (blacklist)
+DiffGenerator.Generate(original, modified, ignore: true, p => p.Name);
+
+// New (WhiteList)
+DiffGenerator.Generate(original, modified, ignore: false, p => p.Name);
+
+// Standard call with no ignore or include generates diff
+DiffGenerator.Generate(original, modified);
+```
+
+- **Static** `DiffGenerator.Ignore` and `DiffGenerator.Include` properties removed.
+  Use the `ignore` parameter on Generate with selectors instead or use `Configure` with `Ignore` or `Include`.
+
+- `TypeConfigurator` throws when mixing Ignore and Include on the same type.
+  This prevents undefined behavior. If you need both modes, configure separate types or use different configurator instances.
+
+### Version 1.0.2 Changelog here

@@ -137,16 +137,6 @@ namespace Altered.Tests.Main
         }
 
         [Fact]
-        public void Generate_SelectorsProvided_IgnoreNull_ThrowsInvalidOperationException()
-        {
-            var original = new SampleModel { Name = "Alice", Age = 30 };
-            var modified = new SampleModel { Name = "Bob", Age = 31 };
-
-            Assert.Throws<InvalidOperationException>(() =>
-                DiffGenerator.Generate(original, modified, null, x => x.Name));
-        }
-
-        [Fact]
         public void Generate_WithIgnoreTrueAndSelector_SkipsIgnoredProperty()
         {
             DiffGenerator.Configure<SampleModel>();
@@ -274,16 +264,6 @@ namespace Altered.Tests.Main
             var result = DiffGenerator.Generate(original, modified);
 
             Assert.Contains(result, d => d.PropertyName == "Name");
-        }
-
-        [Fact]
-        public void Generate_SelectorsWithoutPriorConfigure_IgnoreNull_ThrowsInvalidOperationException()
-        {
-            var original = new SampleModel { Name = "Alice" };
-            var modified = new SampleModel { Name = "Bob" };
-
-            Assert.Throws<InvalidOperationException>(() =>
-                DiffGenerator.Generate(original, modified, null, x => x.Name));
         }
 
         // -----------------------------------------------------------------------------------------

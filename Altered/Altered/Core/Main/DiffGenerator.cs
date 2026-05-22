@@ -50,9 +50,19 @@ namespace Altered.Core.Main
         /// <param name="ignore">Indicates whether to ignore properties or include if false.</param>
         /// <param name="propertySelectors">Expressions specifying the properties to include in the comparison.</param>
         /// <returns>A list of differences between the original and modified objects.</returns>
-        public static List<DiffEntry> Generate<TValue>(TValue original, TValue modified, bool? ignore = null, params Expression<Func<TValue, object>>[] propertySelectors)
+        public static List<DiffEntry> Generate<TValue>(TValue original, TValue modified, bool ignore, params Expression<Func<TValue, object>>[] propertySelectors)
             where TValue : class
             => GenerateDiffs(original, modified, propertySelectors, ignore);
+
+        /// <summary>
+        /// Generates a list of differences between two objects of the same type.
+        /// </summary>
+        /// <typeparam name="TValue">The type of the objects to compare. Must be a reference type.</typeparam>
+        /// <param name="original">The original object to compare.</param>
+        /// <param name="modified">The modified object to compare.</param>
+        /// <returns>A list of differences between the original and modified objects.</returns>
+        public static List<DiffEntry> Generate<TValue>(TValue original, TValue modified) where TValue : class  
+            => GenerateDiffs(original, modified, []);
 
         /// <summary>
         /// Removes all configurations.
