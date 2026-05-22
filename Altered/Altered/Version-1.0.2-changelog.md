@@ -2,8 +2,6 @@
 
 All notable changes to the **Altered** library are documented in this file.
 
-## [Unreleased] – PR #8 (Thread Safety & API Refinements)
-
 ### 🔄 Removed
 
 - **Static `Ignore` and `Include` properties** on `DiffGenerator` – these global flags have been removed to eliminate mutable static state and improve thread safety.
