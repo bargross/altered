@@ -155,7 +155,7 @@ var productChanges = DiffGenerator.Generate(address1, address2); // Uses Address
 **Important:** Once you call `Ignore` (blacklist) or `Include` (whitelist) on a configurator, you cannot switch to the other mode on the same configurator. Attempting to do so throws `InvalidOperationException`.
 However, different types can freely use different modes – they are completely independent.
 
-```
+
 ### 🔍 Custom Comparers
 
 Register custom comparison logic for specific types, overriding the default equality check:
@@ -313,4 +313,4 @@ DiffGenerator.Generate(original, modified);
 - `TypeConfigurator` throws when mixing Ignore and Include on the same type.
   This prevents undefined behavior. If you need both modes, configure separate types or use different configurator instances.
 
-### Version 1.0.2 Changelog here
+### Version 1.0.2 Changelog [here](https://github.com/bargross/altered/blob/main/Altered/Altered/Version-1.0.2-changelog.md)
