@@ -16,6 +16,10 @@ namespace Altered.Core.Extensions
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         };
 
+        // -----------------------------------------------------------------------------------------
+        // Public API
+        // -----------------------------------------------------------------------------------------
+
         /// <summary>
         /// Serializes a list of diffs to a JSON string.
         /// </summary>
@@ -23,22 +27,7 @@ namespace Altered.Core.Extensions
         /// <param name="options">Optional JSON serializer options. Uses defaults if null.</param>
         /// <returns>JSON string representation of the diffs. Never returns null.</returns>
         public static string ToJson(this List<DiffEntry>? diffs, JsonSerializerOptions? options = null)
-        {
-            // Safety: null diffs become empty array
-            if (diffs == null || diffs.Count == 0)
-            {
-                return "[]";
-            }
-
-            try
-            {
-                return JsonSerializer.Serialize(diffs, options ?? DefaultJsonOptions);
-            }
-            catch (JsonException ex)
-            {
-                throw new InvalidOperationException("Failed to serialize diffs to JSON.", ex);
-            }
-        }
+            => SerializeDiffs(diffs, options);
 
         /// <summary>
         /// Deserializes a JSON string back to a list of diffs.
@@ -47,29 +36,7 @@ namespace Altered.Core.Extensions
         /// <param name="options">Optional JSON serializer options. Uses defaults if null.</param>
         /// <returns>List of DiffEntry, never returns null.</returns>
         public static List<DiffEntry> FromJson(string? json, JsonSerializerOptions? options = null)
-        {
-            // Safety: null, empty, or whitespace input returns empty list
-            if (string.IsNullOrWhiteSpace(json))
-            {
-                return new List<DiffEntry>();
-            }
-
-            // Safety: "null" literal also returns empty list
-            if (json.Trim() == "null")
-            {
-                return new List<DiffEntry>();
-            }
-
-            try
-            {
-                var result = JsonSerializer.Deserialize<List<DiffEntry>>(json, options ?? DefaultJsonOptions);
-                return result ?? new List<DiffEntry>();
-            }
-            catch (JsonException ex)
-            {
-                throw new ArgumentException($"Invalid JSON format. Unable to deserialize diffs. JSON: {json.Truncate(100)}", ex);
-            }
-        }
+            => DeserializeDiffs(json, options);
 
         /// <summary>
         /// Writes diffs to a file as JSON.
@@ -85,26 +52,7 @@ namespace Altered.Core.Extensions
             string filePath,
             JsonSerializerOptions? options = null,
             CancellationToken cancellationToken = default)
-        {
-            // Safety: validate file path
-            if (string.IsNullOrWhiteSpace(filePath))
-                throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
-
-            // Safety: check for invalid path characters
-            var invalidChars = Path.GetInvalidPathChars();
-            if (filePath.IndexOfAny(invalidChars) >= 0)
-                throw new ArgumentException("File path contains invalid characters.", nameof(filePath));
-
-            // Safety: ensure directory exists
-            var directory = Path.GetDirectoryName(filePath);
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            var json = diffs.ToJson(options);
-            await File.WriteAllTextAsync(filePath, json, cancellationToken);
-        }
+            => await WriteDiffsToFileAsync(diffs, filePath, options, cancellationToken);
 
         /// <summary>
         /// Reads diffs from a JSON file.
@@ -120,18 +68,7 @@ namespace Altered.Core.Extensions
             string filePath,
             JsonSerializerOptions? options = null,
             CancellationToken cancellationToken = default)
-        {
-            // Safety: validate file path
-            if (string.IsNullOrWhiteSpace(filePath))
-                throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
-
-            // Safety: check for file existence
-            if (!File.Exists(filePath))
-                throw new FileNotFoundException($"File not found: {filePath}", filePath);
-
-            var json = await File.ReadAllTextAsync(filePath, cancellationToken);
-            return FromJson(json, options);
-        }
+            => await ReadDiffsFromFileAsync(filePath, options, cancellationToken);
 
         /// <summary>
         /// Tries to deserialize JSON safely without throwing exceptions.
@@ -142,27 +79,7 @@ namespace Altered.Core.Extensions
         public static (bool Success, List<DiffEntry> Diffs) TryFromJson(
             string? json,
             JsonSerializerOptions? options = null)
-        {
-            try
-            {
-                var diffs = FromJson(json, options);
-
-                if (diffs.Count == 0)
-                {
-                    return (false, diffs);
-                }
-
-                return (true, diffs);
-            }
-            catch (ArgumentException)
-            {
-                return (false, new List<DiffEntry>());
-            }
-            catch (JsonException)
-            {
-                return (false, new List<DiffEntry>());
-            }
-        }
+            => TryDeserializeDiffs(json, options);
 
         /// <summary>
         /// Tries to write diffs to a file safely without throwing exceptions.
@@ -177,10 +94,112 @@ namespace Altered.Core.Extensions
             string filePath,
             JsonSerializerOptions? options = null,
             CancellationToken cancellationToken = default)
+            => await TryWriteDiffsToFileAsync(diffs, filePath, options, cancellationToken);
+
+        // -----------------------------------------------------------------------------------------
+        // Internal implementation
+        // -----------------------------------------------------------------------------------------
+
+        internal static string SerializeDiffs(List<DiffEntry>? diffs, JsonSerializerOptions? options)
+        {
+            if (diffs == null || diffs.Count == 0)
+                return "[]";
+
+            try
+            {
+                return JsonSerializer.Serialize(diffs, options ?? DefaultJsonOptions);
+            }
+            catch (JsonException ex)
+            {
+                throw new InvalidOperationException("Failed to serialize diffs to JSON.", ex);
+            }
+        }
+
+        internal static List<DiffEntry> DeserializeDiffs(string? json, JsonSerializerOptions? options)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return new List<DiffEntry>();
+
+            if (json.Trim() == "null")
+                return new List<DiffEntry>();
+
+            try
+            {
+                var result = JsonSerializer.Deserialize<List<DiffEntry>>(json, options ?? DefaultJsonOptions);
+                return result ?? new List<DiffEntry>();
+            }
+            catch (JsonException ex)
+            {
+                throw new ArgumentException($"Invalid JSON format. Unable to deserialize diffs. JSON: {json.Truncate(100)}", ex);
+            }
+        }
+
+        internal static async Task WriteDiffsToFileAsync(
+            List<DiffEntry>? diffs,
+            string filePath,
+            JsonSerializerOptions? options,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
+
+            var invalidChars = Path.GetInvalidPathChars();
+            if (filePath.IndexOfAny(invalidChars) >= 0)
+                throw new ArgumentException("File path contains invalid characters.", nameof(filePath));
+
+            var directory = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                Directory.CreateDirectory(directory);
+
+            var json = SerializeDiffs(diffs, options);
+            await File.WriteAllTextAsync(filePath, json, cancellationToken);
+        }
+
+        internal static async Task<List<DiffEntry>> ReadDiffsFromFileAsync(
+            string filePath,
+            JsonSerializerOptions? options,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
+
+            if (!File.Exists(filePath))
+                throw new FileNotFoundException($"File not found: {filePath}", filePath);
+
+            var json = await File.ReadAllTextAsync(filePath, cancellationToken);
+            return DeserializeDiffs(json, options);
+        }
+
+        internal static (bool Success, List<DiffEntry> Diffs) TryDeserializeDiffs(
+            string? json,
+            JsonSerializerOptions? options)
         {
             try
             {
-                await diffs.WriteToJsonFileAsync(filePath, options, cancellationToken);
+                var diffs = DeserializeDiffs(json, options);
+                return diffs.Count == 0
+                    ? (false, diffs)
+                    : (true, diffs);
+            }
+            catch (ArgumentException)
+            {
+                return (false, new List<DiffEntry>());
+            }
+            catch (JsonException)
+            {
+                return (false, new List<DiffEntry>());
+            }
+        }
+
+        internal static async Task<(bool Success, string? ErrorMessage)> TryWriteDiffsToFileAsync(
+            List<DiffEntry>? diffs,
+            string filePath,
+            JsonSerializerOptions? options,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await WriteDiffsToFileAsync(diffs, filePath, options, cancellationToken);
                 return (true, null);
             }
             catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or JsonException)
@@ -189,10 +208,9 @@ namespace Altered.Core.Extensions
             }
         }
 
-        // Helper extension for safe string truncation
-        private static string Truncate(this string value, int maxLength)
+        internal static string Truncate(this string value, int maxLength)
         {
-            if (string.IsNullOrEmpty(value)) return value;
+            if (string.IsNullOrWhiteSpace(value)) return value;
             return value.Length <= maxLength ? value : value[..maxLength] + "...";
         }
     }

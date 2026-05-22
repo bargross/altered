@@ -1,169 +1,620 @@
 ﻿using Altered.Core.Configure;
-using Altered.Core.Extensions;
-using System.Linq.Expressions;
 
 namespace Altered.Tests.Configure
 {
     public class TypeConfiguratorTests
     {
-        [Fact]
-        public void ShouldConfigureType()
+        private class SampleModel
         {
-            // Arrange
+            public string Name { get; set; } = string.Empty;
+            public int Age { get; set; }
+            public string Email { get; set; } = string.Empty;
+        }
+
+        private class OtherModel
+        {
+            public string Title { get; set; } = string.Empty;
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // Configure<TValue>()
+        // -----------------------------------------------------------------------------------------
+
+        [Fact]
+        public void Configure_Generic_SetsType()
+        {
             var configurator = new TypeConfigurator();
 
-            // Act
-            configurator.Configure<string>();
+            configurator.Configure<SampleModel>();
 
-            // Assert
-            Assert.NotNull(configurator.Type);
+            Assert.Equal(typeof(SampleModel), configurator.Type);
         }
 
         [Fact]
-        public void ShouldConfigureTypeWithExistingType()
+        public void Configure_Generic_CalledTwiceWithSameType_DoesNotThrow()
         {
-            // Arrange
-            var type = typeof(string);
-            var configurator = new TypeConfigurator(type);
+            var configurator = new TypeConfigurator();
+            configurator.Configure<SampleModel>();
 
-            // Act
-            configurator.Configure<string>();
+            var ex = Record.Exception(() => configurator.Configure<SampleModel>());
 
-            // Assert
-            Assert.Equal(type, configurator.Type);
+            Assert.Null(ex);
         }
 
         [Fact]
-        public void ShouldIgnoreProperty()
+        public void Configure_Generic_CalledWithDifferentType_ThrowsInvalidCastException()
         {
-            // Arrange
             var configurator = new TypeConfigurator();
-            Expression<Func<string, object>> expression = x => x.Length;
+            configurator.Configure<SampleModel>();
 
-            // Act
-            configurator.Ignore(expression);
-
-            // Assert
-            Assert.Contains(expression.GetPropertyName(), configurator.GetIgnoredProperties());
+            Assert.Throws<InvalidCastException>(() => configurator.Configure<OtherModel>());
         }
 
         [Fact]
-        public void ShouldIgnoreManyProperties()
+        public void Configure_Generic_ReturnsSameInstance()
         {
-            // Arrange
             var configurator = new TypeConfigurator();
-            Expression<Func<string, object>> expression = x => x.Length;
-            var expressions = new[] { expression };
 
-            // Act
-            configurator.IgnoreMany(expressions);
+            var result = configurator.Configure<SampleModel>();
 
-            // Assert
-            Assert.Contains(expressions[0].GetPropertyName(), configurator.GetIgnoredProperties());
-            Assert.Contains(expression.GetPropertyName(), configurator.GetIgnoredProperties());
+            Assert.Same(configurator, result);
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // Configure(Type)
+        // -----------------------------------------------------------------------------------------
+
+        [Fact]
+        public void Configure_Type_SetsType()
+        {
+            var configurator = new TypeConfigurator();
+
+            configurator.Configure(typeof(SampleModel));
+
+            Assert.Equal(typeof(SampleModel), configurator.Type);
         }
 
         [Fact]
-        public void ShouldIncludeProperty()
+        public void Configure_Type_CalledWithDifferentType_ThrowsInvalidCastException()
         {
-            // Arrange
             var configurator = new TypeConfigurator();
-            Expression<Func<string, object>> expression = x => x.Length;
+            configurator.Configure(typeof(SampleModel));
 
-            // Act
-            configurator.Include(expression);
-
-            // Assert
-            Assert.Contains(expression.GetPropertyName(), configurator.GetIncludedProperties());
+            Assert.Throws<InvalidCastException>(() => configurator.Configure(typeof(OtherModel)));
         }
 
         [Fact]
-        public void ShouldIncludeManyProperties()
+        public void Configure_Type_CalledTwiceWithSameType_DoesNotThrow()
         {
-            // Arrange
             var configurator = new TypeConfigurator();
-            Expression<Func<string, object>> expression = x => x.Length;
-            var expressions = new[] { expression };
+            configurator.Configure(typeof(SampleModel));
 
-            // Act
-            configurator.IncludeMany(expressions);
+            var ex = Record.Exception(() => configurator.Configure(typeof(SampleModel)));
 
-            // Assert
-            Assert.Contains(expressions[0].GetPropertyName(), configurator.GetIncludedProperties());
-            Assert.Contains(expression.GetPropertyName(), configurator.GetIncludedProperties());
+            Assert.Null(ex);
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // Type property
+        // -----------------------------------------------------------------------------------------
+
+        [Fact]
+        public void Type_BeforeConfigure_ThrowsArgumentNullException()
+        {
+            var configurator = new TypeConfigurator();
+
+            Assert.Throws<ArgumentNullException>(() => configurator.Type);
         }
 
         [Fact]
-        public void ShouldThrowArgumentExceptionWhenIgnoringAndThenIncludingPropertiesSimultaneously()
+        public void Type_AfterConfigure_ReturnsConfiguredType()
         {
-            // Arrange
             var configurator = new TypeConfigurator();
-            Expression<Func<string, object>> expression = x => x.Length;
+            configurator.Configure<SampleModel>();
 
-            configurator.Ignore(expression);
+            Assert.Equal(typeof(SampleModel), configurator.Type);
+        }
 
-            Action action = () => configurator.Include(expression);
+        // -----------------------------------------------------------------------------------------
+        // Ignore
+        // -----------------------------------------------------------------------------------------
 
-            // Act and Assert
-            Assert.Throws<ArgumentException>(action);
+        [Fact]
+        public void Ignore_SingleProperty_AddsToIgnoredProperties()
+        {
+            var configurator = new TypeConfigurator();
+
+            configurator.Ignore<SampleModel>(x => x.Name);
+
+            Assert.Contains("Name", configurator.IgnoredProperties);
         }
 
         [Fact]
-        public void ShouldThrowArgumentExceptionWhenIncludingAndThenIgnoringPropertiesSimultaneously()
+        public void Ignore_SetsExclusionMode()
         {
-            // Arrange
             var configurator = new TypeConfigurator();
-            Expression<Func<string, object>> expression = x => x.Length;
 
-            configurator.Include(expression);
+            configurator.Ignore<SampleModel>(x => x.Name);
 
-            Action action = () => configurator.Ignore(expression);
-
-            // Act and Assert
-            Assert.Throws<ArgumentException>(action);
+            Assert.True(configurator._isExclusion);
         }
 
         [Fact]
-        public void ShouldClearIgnoredProperties()
+        public void Ignore_AfterInclude_ThrowsInvalidOperationException()
         {
-            // Arrange
             var configurator = new TypeConfigurator();
-            Expression<Func<string, object>> expression = x => x.Length;
+            configurator.Include<SampleModel>(x => x.Name);
 
-            // Act
-            configurator.Ignore(expression);
+            Assert.Throws<InvalidOperationException>(() =>
+                configurator.Ignore<SampleModel>(x => x.Age));
+        }
+
+        [Fact]
+        public void Ignore_DifferentTypeThanConfigured_ThrowsArgumentException()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Configure<SampleModel>();
+
+            Assert.Throws<ArgumentException>(() =>
+                configurator.Ignore<OtherModel>(x => x.Title));
+        }
+
+        [Fact]
+        public void Ignore_ReturnsSameInstance()
+        {
+            var configurator = new TypeConfigurator();
+
+            var result = configurator.Ignore<SampleModel>(x => x.Name);
+
+            Assert.Same(configurator, result);
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // IgnoreMany
+        // -----------------------------------------------------------------------------------------
+
+        [Fact]
+        public void IgnoreMany_MultipleProperties_AddsAllToIgnoredProperties()
+        {
+            var configurator = new TypeConfigurator();
+
+            configurator.IgnoreMany<SampleModel>(x => x.Name, x => x.Age, x => x.Email);
+
+            Assert.Contains("Name", configurator.IgnoredProperties);
+            Assert.Contains("Age", configurator.IgnoredProperties);
+            Assert.Contains("Email", configurator.IgnoredProperties);
+        }
+
+        [Fact]
+        public void IgnoreMany_CalledTwice_AccumulatesAllProperties()
+        {
+            var configurator = new TypeConfigurator();
+
+            configurator.IgnoreMany<SampleModel>(x => x.Name);
+            configurator.IgnoreMany<SampleModel>(x => x.Age);
+
+            Assert.Contains("Name", configurator.IgnoredProperties);
+            Assert.Contains("Age", configurator.IgnoredProperties);
+        }
+
+        [Fact]
+        public void IgnoreMany_AfterInclude_ThrowsInvalidOperationException()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Include<SampleModel>(x => x.Name);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                configurator.IgnoreMany<SampleModel>(x => x.Age, x => x.Email));
+        }
+
+        [Fact]
+        public void IgnoreMany_ReturnsSameInstance()
+        {
+            var configurator = new TypeConfigurator();
+
+            var result = configurator.IgnoreMany<SampleModel>(x => x.Name, x => x.Age);
+
+            Assert.Same(configurator, result);
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // Include
+        // -----------------------------------------------------------------------------------------
+
+        [Fact]
+        public void Include_SingleProperty_AddsToIncludedProperties()
+        {
+            var configurator = new TypeConfigurator();
+
+            configurator.Include<SampleModel>(x => x.Name);
+
+            Assert.Contains("Name", configurator.IncludedProperties);
+        }
+
+        [Fact]
+        public void Include_SetsInclusionMode()
+        {
+            var configurator = new TypeConfigurator();
+
+            configurator.Include<SampleModel>(x => x.Name);
+
+            Assert.True(configurator._isInclusion);
+        }
+
+        [Fact]
+        public void Include_AfterIgnore_ThrowsInvalidOperationException()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Ignore<SampleModel>(x => x.Name);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                configurator.Include<SampleModel>(x => x.Age));
+        }
+
+        [Fact]
+        public void Include_DifferentTypeThanConfigured_ThrowsArgumentException()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Configure<SampleModel>();
+
+            Assert.Throws<ArgumentException>(() =>
+                configurator.Include<OtherModel>(x => x.Title));
+        }
+
+        [Fact]
+        public void Include_ReturnsSameInstance()
+        {
+            var configurator = new TypeConfigurator();
+
+            var result = configurator.Include<SampleModel>(x => x.Name);
+
+            Assert.Same(configurator, result);
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // IncludeMany
+        // -----------------------------------------------------------------------------------------
+
+        [Fact]
+        public void IncludeMany_MultipleProperties_AddsAllToIncludedProperties()
+        {
+            var configurator = new TypeConfigurator();
+
+            configurator.IncludeMany<SampleModel>(x => x.Name, x => x.Age, x => x.Email);
+
+            Assert.Contains("Name", configurator.IncludedProperties);
+            Assert.Contains("Age", configurator.IncludedProperties);
+            Assert.Contains("Email", configurator.IncludedProperties);
+        }
+
+        [Fact]
+        public void IncludeMany_CalledTwice_AccumulatesAllProperties()
+        {
+            var configurator = new TypeConfigurator();
+
+            configurator.IncludeMany<SampleModel>(x => x.Name);
+            configurator.IncludeMany<SampleModel>(x => x.Age);
+
+            Assert.Contains("Name", configurator.IncludedProperties);
+            Assert.Contains("Age", configurator.IncludedProperties);
+        }
+
+        [Fact]
+        public void IncludeMany_AfterIgnore_ThrowsInvalidOperationException()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Ignore<SampleModel>(x => x.Name);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                configurator.IncludeMany<SampleModel>(x => x.Age, x => x.Email));
+        }
+
+        [Fact]
+        public void IncludeMany_ReturnsSameInstance()
+        {
+            var configurator = new TypeConfigurator();
+
+            var result = configurator.IncludeMany<SampleModel>(x => x.Name, x => x.Age);
+
+            Assert.Same(configurator, result);
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // IsIgnored
+        // -----------------------------------------------------------------------------------------
+
+        [Fact]
+        public void IsIgnored_Generic_IgnoredProperty_ReturnsTrue()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Configure<SampleModel>();
+            configurator.Ignore<SampleModel>(x => x.Name);
+
+            Assert.True(configurator.IsIgnored<SampleModel>("Name"));
+        }
+
+        [Fact]
+        public void IsIgnored_Generic_NotIgnoredProperty_ReturnsFalse()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Configure<SampleModel>();
+            configurator.Ignore<SampleModel>(x => x.Name);
+
+            Assert.False(configurator.IsIgnored<SampleModel>("Age"));
+        }
+
+        [Fact]
+        public void IsIgnored_Generic_DifferentType_ReturnsFalse()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Configure<SampleModel>();
+            configurator.Ignore<SampleModel>(x => x.Name);
+
+            Assert.False(configurator.IsIgnored<OtherModel>("Name"));
+        }
+
+        [Fact]
+        public void IsIgnored_Type_IgnoredProperty_ReturnsTrue()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Configure<SampleModel>();
+            configurator.Ignore<SampleModel>(x => x.Name);
+
+            Assert.True(configurator.IsIgnored(typeof(SampleModel), "Name"));
+        }
+
+        [Fact]
+        public void IsIgnored_Type_DifferentType_ReturnsFalse()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Configure<SampleModel>();
+            configurator.Ignore<SampleModel>(x => x.Name);
+
+            Assert.False(configurator.IsIgnored(typeof(OtherModel), "Name"));
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // IsIncluded
+        // -----------------------------------------------------------------------------------------
+
+        [Fact]
+        public void IsIncluded_Generic_IncludedProperty_ReturnsTrue()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Configure<SampleModel>();
+            configurator.Include<SampleModel>(x => x.Name);
+
+            Assert.True(configurator.IsIncluded<SampleModel>("Name"));
+        }
+
+        [Fact]
+        public void IsIncluded_Generic_NotIncludedProperty_ReturnsFalse()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Configure<SampleModel>();
+            configurator.Include<SampleModel>(x => x.Name);
+
+            Assert.False(configurator.IsIncluded<SampleModel>("Age"));
+        }
+
+        [Fact]
+        public void IsIncluded_Generic_DifferentType_ReturnsFalse()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Configure<SampleModel>();
+            configurator.Include<SampleModel>(x => x.Name);
+
+            Assert.False(configurator.IsIncluded<OtherModel>("Name"));
+        }
+
+        [Fact]
+        public void IsIncluded_Type_IncludedProperty_ReturnsTrue()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Configure<SampleModel>();
+            configurator.Include<SampleModel>(x => x.Name);
+
+            Assert.True(configurator.IsIncluded(typeof(SampleModel), "Name"));
+        }
+
+        [Fact]
+        public void IsIncluded_Type_DifferentType_ReturnsFalse()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Configure<SampleModel>();
+            configurator.Include<SampleModel>(x => x.Name);
+
+            Assert.False(configurator.IsIncluded(typeof(OtherModel), "Name"));
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // BlackList
+        // -----------------------------------------------------------------------------------------
+
+        [Fact]
+        public void BlackList_SetTrue_SetsExclusionMode()
+        {
+            var configurator = new TypeConfigurator();
+
+            configurator.BlackList(true);
+
+            Assert.True(configurator._isExclusion);
+        }
+
+        [Fact]
+        public void BlackList_SetTrue_DoesNotSetInclusionMode()
+        {
+            var configurator = new TypeConfigurator();
+
+            configurator.BlackList(true);
+
+            Assert.False(configurator._isInclusion);
+        }
+
+        [Fact]
+        public void BlackList_CalledTwiceWithTrue_DoesNotThrow()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.BlackList(true);
+
+            var ex = Record.Exception(() => configurator.BlackList(true));
+
+            Assert.Null(ex);
+        }
+
+        [Fact]
+        public void BlackList_WhenAlreadyWhiteListed_ThrowsInvalidOperationException()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.WhiteList(true);
+
+            Assert.Throws<InvalidOperationException>(() => configurator.BlackList(true));
+        }
+
+        [Fact]
+        public void BlackList_ReturnsSameInstance()
+        {
+            var configurator = new TypeConfigurator();
+
+            var result = configurator.BlackList(true);
+
+            Assert.Same(configurator, result);
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // WhiteList
+        // -----------------------------------------------------------------------------------------
+
+        [Fact]
+        public void WhiteList_SetTrue_SetsInclusionMode()
+        {
+            var configurator = new TypeConfigurator();
+
+            configurator.WhiteList(true);
+
+            Assert.True(configurator._isInclusion);
+        }
+
+        [Fact]
+        public void WhiteList_SetTrue_DoesNotSetExclusionMode()
+        {
+            var configurator = new TypeConfigurator();
+
+            configurator.WhiteList(true);
+
+            Assert.False(configurator._isExclusion);
+        }
+
+        [Fact]
+        public void WhiteList_CalledTwiceWithTrue_DoesNotThrow()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.WhiteList(true);
+
+            var ex = Record.Exception(() => configurator.WhiteList(true));
+
+            Assert.Null(ex);
+        }
+
+        [Fact]
+        public void WhiteList_WhenAlreadyBlackListed_ThrowsInvalidOperationException()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.BlackList(true);
+
+            Assert.Throws<InvalidOperationException>(() => configurator.WhiteList(true));
+        }
+
+        [Fact]
+        public void WhiteList_ReturnsSameInstance()
+        {
+            var configurator = new TypeConfigurator();
+
+            var result = configurator.WhiteList(true);
+
+            Assert.Same(configurator, result);
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // Clear
+        // -----------------------------------------------------------------------------------------
+
+        [Fact]
+        public void Clear_AfterIgnore_RemovesIgnoredProperties()
+        {
+            var configurator = new TypeConfigurator();
+            configurator.Ignore<SampleModel>(x => x.Name);
+            configurator.Ignore<SampleModel>(x => x.Age);
+
             configurator.Clear();
 
-            // Assert
-            Assert.Empty(configurator.GetIgnoredProperties());
+            Assert.Empty(configurator.IgnoredProperties);
         }
 
         [Fact]
-        public void ShouldGetIgnoredProperties()
+        public void Clear_OnEmptyConfigurator_DoesNotThrow()
         {
-            // Arrange
             var configurator = new TypeConfigurator();
-            Expression<Func<string, object>> expression = x => x.Length;
 
-            // Act
-            configurator.Ignore(expression);
+            var ex = Record.Exception(() => configurator.Clear());
 
-            // Assert
-            Assert.Contains(expression.GetPropertyName(), configurator.GetIgnoredProperties());
+            Assert.Null(ex);
+        }
+
+        // -----------------------------------------------------------------------------------------
+        // Fluent chaining
+        // -----------------------------------------------------------------------------------------
+
+        [Fact]
+        public void FluentChain_Configure_IgnoreMany_AddsAllProperties()
+        {
+            var configurator = new TypeConfigurator();
+
+            configurator
+                .Configure<SampleModel>()
+                .IgnoreMany<SampleModel>(x => x.Name, x => x.Age);
+
+            Assert.Contains("Name", configurator.IgnoredProperties);
+            Assert.Contains("Age", configurator.IgnoredProperties);
         }
 
         [Fact]
-        public void ShouldGetIncludedProperties()
+        public void FluentChain_Configure_IncludeMany_AddsAllProperties()
         {
-            // Arrange
             var configurator = new TypeConfigurator();
-            Expression<Func<string, object>> expression = x => x.Length;
 
-            // Act
-            configurator.Include(expression);
+            configurator
+                .Configure<SampleModel>()
+                .IncludeMany<SampleModel>(x => x.Name, x => x.Age);
 
-            // Assert
-            Assert.Contains(expression.GetPropertyName(), configurator.GetIncludedProperties());
+            Assert.Contains("Name", configurator.IncludedProperties);
+            Assert.Contains("Age", configurator.IncludedProperties);
+        }
+
+        [Fact]
+        public void FluentChain_Ignore_Ignore_AccumulatesProperties()
+        {
+            var configurator = new TypeConfigurator();
+
+            configurator
+                .Ignore<SampleModel>(x => x.Name)
+                .Ignore<SampleModel>(x => x.Age);
+
+            Assert.Contains("Name", configurator.IgnoredProperties);
+            Assert.Contains("Age", configurator.IgnoredProperties);
+        }
+
+        [Fact]
+        public void FluentChain_Include_Include_AccumulatesProperties()
+        {
+            var configurator = new TypeConfigurator();
+
+            configurator
+                .Include<SampleModel>(x => x.Name)
+                .Include<SampleModel>(x => x.Age);
+
+            Assert.Contains("Name", configurator.IncludedProperties);
+            Assert.Contains("Age", configurator.IncludedProperties);
         }
     }
 }

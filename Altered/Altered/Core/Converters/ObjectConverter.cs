@@ -7,9 +7,6 @@ namespace Altered.Core.Converters
 
     public class ObjectConverter : JsonConverter<object>
     {
-        private const string IsoDateFormat = "yyyy-MM-ddTHH:mm:ss.fff";
-        private const string IsoDateFormatZ = "yyyy-MM-ddTHH:mm:ss.fffZ";
-
         public override object? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             switch (reader.TokenType)

@@ -4,35 +4,73 @@ namespace Altered.Core.Main
 {
     public static class DiffApplier
     {
-        //public static 
+        // -----------------------------------------------------------------------------------------
+        // Public API
+        // -----------------------------------------------------------------------------------------
+
+        ///
         public static void Apply<T>(T target, List<DiffEntry> diffs)
             where T : class
+            => ApplyDiffs(target, diffs);
+
+        // -----------------------------------------------------------------------------------------
+        // Internal implementation
+        // -----------------------------------------------------------------------------------------
+
+        internal static void ApplyDiffs<T>(T target, List<DiffEntry> diffs)
+            where T : class
         {
-            if (target == null) throw new ArgumentNullException(nameof(target));
+            ValidateArguments(target, diffs);
 
-            if (diffs == null) throw new ArgumentNullException(nameof(diffs));
-
-            if (diffs.Any(x => x == null)) throw new ArgumentException("Null value in different entries list");
-
-            if (diffs.Any(x => string.IsNullOrWhiteSpace(x.PropertyName))) throw new ArgumentException("Different entries has entry with property name as null, empty or white space in list.");
-
-            var properties = typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            var propertiesByName = properties.ToDictionary(p => p.Name, p => p);
+            var propertiesByName = GetWritableProperties<T>();
 
             foreach (var diff in diffs)
-            {
-                if (!propertiesByName.TryGetValue(diff.PropertyName, out var prop))
-                    continue;
+                TryApplyDiff(propertiesByName, diff, target);
+        }
 
-                if (!prop.CanWrite)
-                    continue;
+        internal static void ValidateArguments<T>(T target, List<DiffEntry> diffs)
+            where T : class
+        {
+            if (target == null) 
+                throw new ArgumentNullException(nameof(target));
 
-                // Type checking - don't apply if types don't match
-                if (diff.NewValue != null && !prop.PropertyType.IsAssignableFrom(diff.NewValue.GetType()))
-                    continue;
+            if (diffs == null) 
+                throw new ArgumentNullException(nameof(diffs));
 
-                prop.SetValue(target, diff.NewValue);
-            }
+            if (diffs.Any(x => x == null)) 
+                throw new ArgumentException("Null value in different entries list");
+
+            if (diffs.Any(x => string.IsNullOrWhiteSpace(x.PropertyName))) 
+                throw new ArgumentException("Different entries has entry with property name as null, empty or white space in list.");
+        }
+
+        internal static Dictionary<string, PropertyInfo> GetWritableProperties<T>()
+        {
+            return typeof(T)
+                .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .ToDictionary(p => p.Name, p => p);
+        }
+
+        internal static void TryApplyDiff<T>(Dictionary<string, PropertyInfo> propertiesByName, DiffEntry diff, T target)
+        {
+            if (!propertiesByName.TryGetValue(diff.PropertyName, out var prop))
+                return;
+
+            if (!prop.CanWrite)
+                return;
+
+            if (!IsTypeCompatible(prop, diff.NewValue))
+                return;
+
+            prop.SetValue(target, diff.NewValue);
+        }
+
+        internal static bool IsTypeCompatible(PropertyInfo prop, object? newValue)
+        {
+            if (newValue == null)
+                return true;
+
+            return prop.PropertyType.IsAssignableFrom(newValue.GetType());
         }
     }
 }

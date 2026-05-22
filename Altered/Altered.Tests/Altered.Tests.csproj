@@ -21,10 +21,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Main\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Altered\Altered.csproj" />
   </ItemGroup>
 

@@ -1,18 +1,10 @@
-﻿namespace Altered.Core.Configure
+﻿using System.Collections.Concurrent;
+
+namespace Altered.Core.Configure
 {
-    internal class ComparerManager: IComparerManager
+    internal class ComparerManager
     {
-        public Dictionary<Type, Delegate> _customComparers;
-
-        public ComparerManager(Dictionary<Type, Delegate> customComparers) 
-        {
-            _customComparers = customComparers;
-        }
-
-        public ComparerManager()
-        {
-            _customComparers = new Dictionary<Type, Delegate>();
-        }
+        public ConcurrentDictionary<Type, Delegate> _customComparers = new();
 
         public void Register<TValue>(Func<TValue, TValue, bool> customComparer)
         {
@@ -20,7 +12,9 @@
             if (_customComparers.ContainsKey(type))
                 throw new ArgumentException($"Type {type.Name} already has a comparer registered.");
 
-            _customComparers.Add(type, customComparer);
+            var update = _customComparers.TryAdd(type, customComparer);
+            if (!update)
+                throw new InvalidOperationException($"Could not configure custom comparer for type {type.Name}");
         }
 
         public void Replace<TValue>(Func<TValue, TValue, bool> customComparer)
