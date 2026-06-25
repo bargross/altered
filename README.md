@@ -1,5 +1,6 @@
 [![NuGet](https://img.shields.io/nuget/v/altered)](https://www.nuget.org/packages/altered/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/bargross/altered/dotnet.yml?branch=main)](https://github.com/bargross/altered/actions)
 
 # Altered
 
