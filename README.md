@@ -314,4 +314,4 @@ DiffGenerator.Generate(original, modified);
 - `TypeConfigurator` throws when mixing Ignore and Include on the same type.
   This prevents undefined behavior. If you need both modes, configure separate types or use different configurator instances.
 
-### Version 1.0.2 Changelog [here](https://github.com/bargross/altered/blob/main/Altered/Altered/Version-1.0.2-changelog.md)
+### Version 1.0.2 Changelog [here](https://github.com/bargross/altered/blob/main/CHANGELOG.md)
