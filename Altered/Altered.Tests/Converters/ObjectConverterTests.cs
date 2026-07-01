@@ -1,7 +1,6 @@
-﻿using Altered.Core.Extensions;
-using Altered.Core.Converters;
-using Altered.Core.Main;
-using System;
+﻿using Altered.Extensions;
+using Altered.Converters;
+using Altered.Main;
 using System.Text.Json;
 
 namespace Altered.Tests.Converters
@@ -16,6 +15,7 @@ namespace Altered.Tests.Converters
             };
 
             options.Converters.Add(new ObjectConverter());
+            options.Converters.Add(new DiffEntryConverter());
 
             return options;
         }

@@ -1,15 +1,15 @@
 ﻿using System.Collections.Concurrent;
 using System.Linq.Expressions;
 
-namespace Altered.Core.Configure
+namespace Altered.Configure
 {
     internal class TypeConfigurationManager
     {
         private readonly ConcurrentDictionary<Type, TypeConfigurator> _ignoredPropertiesByType = new();
 
-        public TypeConfigurationManager Configure<TValue>() where TValue : class => Configure(typeof(TValue));
+        public TypeConfigurationManager Configure<TValue>() => Configure(typeof(TValue));
 
-        public TypeConfigurationManager Configure<TValue>(TypeConfigurator configurator) where TValue : class => Configure(typeof(TValue), configurator);
+        public TypeConfigurationManager Configure<TValue>(TypeConfigurator configurator) => Configure(typeof(TValue), configurator);
 
         public TypeConfigurationManager Configure(Type type, TypeConfigurator? configurator = null)
         {
@@ -38,7 +38,7 @@ namespace Altered.Core.Configure
             return this;
         }
 
-        public TypeConfigurationManager IgnoreProperties<TValue>(params Expression<Func<TValue, object>>[] propertySelectors) where TValue : class
+        public TypeConfigurationManager IgnoreProperties<TValue>(params Expression<Func<TValue, object>>[] propertySelectors) 
         {
             var type = typeof(TValue);
 
@@ -52,7 +52,7 @@ namespace Altered.Core.Configure
             return this;
         }
 
-        public TypeConfigurationManager IncludeProperties<TValue>(params Expression<Func<TValue, object>>[] propertySelectors) where TValue : class
+        public TypeConfigurationManager IncludeProperties<TValue>(params Expression<Func<TValue, object>>[] propertySelectors)
         {
             var type = typeof(TValue);
 
@@ -107,7 +107,11 @@ namespace Altered.Core.Configure
             else throw new InvalidOperationException($"Type {type.Name} not configured.");
         }
 
-        public void ClearAll() => _ignoredPropertiesByType.Clear();
+        public void ClearAll()
+        {
+            _ignoredPropertiesByType.Clear();
+            
+        }
 
         internal void Validate(Type type)
         {

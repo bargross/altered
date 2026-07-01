@@ -1,4 +1,4 @@
-﻿namespace Altered.Core.Attributes
+﻿namespace Altered.Attributes
 {
     [AttributeUsage(AttributeTargets.Property)]
     public class IgnoreInDiffAttribute : Attribute { }

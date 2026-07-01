@@ -1,8 +1,8 @@
-﻿using Altered.Core.Extensions;
+﻿using Altered.Extensions;
 using System.Linq.Expressions;
 using System.Collections.Concurrent;
 
-namespace Altered.Core.Configure
+namespace Altered.Configure
 {
     public class TypeConfigurator: ITypeConfigurator
     {
@@ -17,9 +17,19 @@ namespace Altered.Core.Configure
         internal IReadOnlySet<string> IncludedPropertiesSet => _propertiesToInclude.ToHashSet();
 
         //=========================================================================================================================
-        //                                                  Public Methods
+        //                                                  Public Constructors
         //=========================================================================================================================
 
+        public TypeConfigurator() { }
+
+        public TypeConfigurator(Type type)
+        {
+            Configure(type);
+        }
+
+        //=========================================================================================================================
+        //                                                  Public Methods
+        //=========================================================================================================================
 
         /// <summary>
         /// Gets the configured type.
@@ -148,7 +158,13 @@ namespace Altered.Core.Configure
             return _type;
         }
 
-        internal void ClearAllProperties() => _propertiesToIgnore.Clear();
+        internal void ClearAllProperties() 
+        {
+            _isExclusion = false;
+            _isInclusion = false;
+            _propertiesToIgnore.Clear();
+            _propertiesToInclude.Clear();
+        }
 
         internal bool IsPropertyIgnored(Type type, string propertyName) => type == _type ? _propertiesToIgnore.Contains(propertyName) : false;
 
@@ -198,28 +214,13 @@ namespace Altered.Core.Configure
             return this;
         }
 
-        internal void ValidateConfigurationType(bool exclusion, bool inclusion)
-        {
-            if (!_isInclusion && !_isExclusion)
-            {
-                _isExclusion = exclusion;
-                _isInclusion = inclusion;
-            }
-
-            if (_isInclusion && exclusion)
-                throw new ArgumentException("Cannot ignore when already including properties.");
-
-            if (_isExclusion && inclusion)
-                throw new ArgumentException("Cannot include when ignoring properties.");
-        }
-
         internal ITypeConfigurator BlackListProperties(bool value)
         {
             if (value == _isExclusion && _isExclusion != _isInclusion)
                 return this;
 
             if (value && _isInclusion)
-                throw new InvalidOperationException("Cannot whitelist when already using blacklist mode");
+                throw new InvalidOperationException("Cannot blacklist when already using whitelist mode");
 
             _isExclusion = value;
 
@@ -241,14 +242,15 @@ namespace Altered.Core.Configure
 
         internal ITypeConfigurator AddToCollection<TValue>(ConcurrentBag<string> collection, params Expression<Func<TValue, object>>[] propertyIgnoreSelectors)
         {
-            var propertyNames = new List<string>();
-            var type = typeof(TValue);
+            if (!propertyIgnoreSelectors.Any()) return this;
 
             foreach (var property in propertyIgnoreSelectors)
             {
                 var propertyName = property.GetPropertyName();
 
-                collection.Add(propertyName);
+                // if property does not exist on the type, add it, if not we ignore it.
+                if (!collection.Contains(propertyName))
+                    collection.Add(propertyName);
             }
 
             return this;

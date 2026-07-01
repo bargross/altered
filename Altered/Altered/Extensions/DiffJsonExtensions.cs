@@ -1,10 +1,10 @@
-﻿using Altered.Core.Main;
+﻿using Altered.Main;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Unicode;
 
-namespace Altered.Core.Extensions
+namespace Altered.Extensions
 {
     public static class DiffJsonExtensions
     {
@@ -174,12 +174,14 @@ namespace Altered.Core.Extensions
             string? json,
             JsonSerializerOptions? options)
         {
+            if (string.IsNullOrWhiteSpace(json))
+                return (false, new List<DiffEntry>());
+
             try
             {
                 var diffs = DeserializeDiffs(json, options);
-                return diffs.Count == 0
-                    ? (false, diffs)
-                    : (true, diffs);
+                
+                return (true, diffs);
             }
             catch (ArgumentException)
             {

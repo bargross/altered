@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
 
-namespace Altered.Core.Configure
+namespace Altered.Configure
 {
     public interface ITypeConfigurator
     {

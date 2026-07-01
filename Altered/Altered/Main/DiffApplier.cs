@@ -1,6 +1,7 @@
-﻿using System.Reflection;
+﻿using System.Globalization;
+using System.Reflection;
 
-namespace Altered.Core.Main
+namespace Altered.Main
 {
     public static class DiffApplier
     {
@@ -10,7 +11,6 @@ namespace Altered.Core.Main
 
         ///
         public static void Apply<T>(T target, List<DiffEntry> diffs)
-            where T : class
             => ApplyDiffs(target, diffs);
 
         // -----------------------------------------------------------------------------------------
@@ -18,7 +18,6 @@ namespace Altered.Core.Main
         // -----------------------------------------------------------------------------------------
 
         internal static void ApplyDiffs<T>(T target, List<DiffEntry> diffs)
-            where T : class
         {
             ValidateArguments(target, diffs);
 
@@ -29,7 +28,6 @@ namespace Altered.Core.Main
         }
 
         internal static void ValidateArguments<T>(T target, List<DiffEntry> diffs)
-            where T : class
         {
             if (target == null) 
                 throw new ArgumentNullException(nameof(target));
@@ -51,24 +49,48 @@ namespace Altered.Core.Main
                 .ToDictionary(p => p.Name, p => p);
         }
 
-        internal static void TryApplyDiff<T>(Dictionary<string, PropertyInfo> propertiesByName, DiffEntry diff, T target)
+        internal static void TryApplyDiff<TValue>(Dictionary<string, PropertyInfo> propertiesByName, DiffEntry diff, TValue target)
         {
-            if (!propertiesByName.TryGetValue(diff.PropertyName, out var prop))
+            if (!propertiesByName.TryGetValue(diff.PropertyName, out var prop)) return;
+            if (!prop.CanWrite) return;
+
+            object? newValue = diff.NewValue;
+
+            // Coerce the value using the type hint if available
+            if (!string.IsNullOrEmpty(diff.NewValueTypeHint) && newValue != null)
+            {
+                if (prop.PropertyType.IsEnum)
+                {
+                    newValue = Enum.ToObject(prop.PropertyType, newValue);
+                }
+                else
+                {
+                    try
+                    {
+                        newValue = Convert.ChangeType(newValue, prop.PropertyType, CultureInfo.InvariantCulture);
+                    }
+                    catch
+                    {
+                        // Fall through to the compatibility check below
+                    }
+                }
+            }
+
+            if (!IsTypeCompatible(prop, newValue)) 
                 return;
 
-            if (!prop.CanWrite)
-                return;
-
-            if (!IsTypeCompatible(prop, diff.NewValue))
-                return;
-
-            prop.SetValue(target, diff.NewValue);
+            prop.SetValue(target, newValue);
         }
 
         internal static bool IsTypeCompatible(PropertyInfo prop, object? newValue)
         {
             if (newValue == null)
-                return true;
+            {
+                // Allow null only if the property is a reference type or a nullable value type
+                var underlyingType = Nullable.GetUnderlyingType(prop.PropertyType);
+
+                return !prop.PropertyType.IsValueType || underlyingType != null;
+            }
 
             return prop.PropertyType.IsAssignableFrom(newValue.GetType());
         }

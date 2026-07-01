@@ -1,10 +1,10 @@
 ﻿using System.Collections.Concurrent;
 
-namespace Altered.Core.Configure
+namespace Altered.Configure
 {
     internal class ComparerManager
     {
-        public ConcurrentDictionary<Type, Delegate> _customComparers = new();
+        internal ConcurrentDictionary<Type, Delegate> _customComparers = new();
 
         public void Register<TValue>(Func<TValue, TValue, bool> customComparer)
         {
@@ -39,5 +39,7 @@ namespace Altered.Core.Configure
 
             return _customComparers[type];
         }
+
+        public void Clear() => _customComparers.Clear();
     }
 }

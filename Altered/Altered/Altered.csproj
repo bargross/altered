@@ -26,8 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Core\Attributes\" />
-    <Folder Include="Core\Main\" />
+    <Folder Include="Attributes\" />
   </ItemGroup>
 
   <ItemGroup>

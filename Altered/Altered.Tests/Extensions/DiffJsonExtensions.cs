@@ -1,5 +1,5 @@
-﻿using Altered.Core.Main;
-using Altered.Core.Extensions;
+﻿using Altered.Main;
+using Altered.Extensions;
 using System.Text.Json;
 
 namespace Altered.Tests.Extensions
@@ -436,25 +436,15 @@ namespace Altered.Tests.Extensions
             Assert.Empty(diffs);
         }
 
-        [Fact]
-        public void TryFromJson_WithNullInput_ReturnsFalseAndEmptyList()
+        [Theory]
+        [InlineData(null, false)]
+        [InlineData("", false)]
+        public void TryFromJson_WithNullOrEmpty_ReturnsExpected(string? input, bool expectedSuccess)
         {
-            // Act
-            var (success, diffs) = DiffJsonExtensions.TryFromJson(null);
+            var (success, diffs) = DiffJsonExtensions.TryFromJson(input);
 
-            // Assert
-            Assert.False(success);
-            Assert.Empty(diffs);
-        }
-
-        [Fact]
-        public void TryFromJson_WithEmptyString_ReturnsFalseAndEmptyList()
-        {
-            // Act
-            var (success, diffs) = DiffJsonExtensions.TryFromJson("");
-
-            // Assert
-            Assert.False(success);
+            Assert.Equal(expectedSuccess, success);
+            Assert.NotNull(diffs);
             Assert.Empty(diffs);
         }
 

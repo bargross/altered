@@ -1,4 +1,4 @@
-﻿using Altered.Core.Configure;
+﻿using Altered.Configure;
 
 namespace Altered.Tests.Configure
 {
@@ -27,6 +27,7 @@ namespace Altered.Tests.Configure
         {
             var manager = new ComparerManager();
             manager.Register<string>(StringComparer);
+
             Assert.True(manager.IsRegistered<string>());
             Assert.Same(StringComparer, manager.Get<string>());
         }
@@ -47,6 +48,7 @@ namespace Altered.Tests.Configure
         {
             var manager = new ComparerManager();
             manager.Register<string>(null);
+
             Assert.True(manager.IsRegistered<string>());
             Assert.Null(manager.Get<string>());
         }
@@ -120,6 +122,7 @@ namespace Altered.Tests.Configure
         {
             var manager = new ComparerManager();
             manager.Register<int>(IntComparer);
+
             var comparer = manager.Get<int>();
             Assert.Same(IntComparer, comparer);
         }

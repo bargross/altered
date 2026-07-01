@@ -1,4 +1,4 @@
-﻿using Altered.Core.Configure;
+﻿using Altered.Configure;
 
 namespace Altered.Tests.Configure
 {

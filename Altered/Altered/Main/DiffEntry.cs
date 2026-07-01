@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Altered.Core.Main
+namespace Altered.Main
 {
     public class DiffEntry
     {
@@ -34,6 +34,11 @@ namespace Altered.Core.Main
         /// </summary>
         /// <returns></returns>
         public override string ToString() => ToDebugString();
+
+
+        [JsonInclude]
+        [JsonPropertyName("NewValueTypeHint")] // Optional: keeps the JSON key consistent
+        internal string? NewValueTypeHint { get; set; }
 
         internal string ToDebugString()
             => $"{PropertyName}: {OldValue} -> {NewValue}";
