@@ -12,15 +12,16 @@ namespace Altered.Main
         internal readonly TypeConfigurationManager _typeConfiguratorManager = new();
         internal readonly ComparerManager _comparerManager = new();
         internal readonly ConcurrentDictionary<Type, Func<object, object, bool>> _comparerWrappers = new();
+        internal readonly ConcurrentDictionary<Type, Func<object, object, List<DiffEntry>>> _generateCache = new();
 
-        internal void ConfigureType<TValue>()
+        public void ConfigureType<TValue>()
         {
             var configurator = new TypeConfigurator();
 
             _typeConfiguratorManager.Configure<TValue>(configurator);
         }
 
-        internal void ConfigureTypeWithAction<TValue>(Action<TypeConfigurator> configure)
+        public void ConfigureTypeWithAction<TValue>(Action<TypeConfigurator> configure)
         {
             if (configure is null)
                 throw new ArgumentNullException(nameof(configure));
@@ -32,7 +33,7 @@ namespace Altered.Main
             _typeConfiguratorManager.Configure<TValue>(configurator);
         }
 
-        internal void ConfigureTypeWithConfigurator<TValue>(TypeConfigurator configurator)
+        public void ConfigureTypeWithConfigurator<TValue>(TypeConfigurator configurator)
         {
             if (configurator is null)
                 throw new ArgumentNullException(nameof(configurator));
@@ -40,7 +41,7 @@ namespace Altered.Main
             _typeConfiguratorManager.Configure<TValue>(configurator);
         }
 
-        internal void RegisterCustomComparer<TValue>(Func<TValue, TValue, bool> customComparer)
+        public void RegisterCustomComparer<TValue>(Func<TValue, TValue, bool> customComparer)
         {
             if (customComparer is null)
                 throw new ArgumentNullException(nameof(customComparer));
@@ -48,7 +49,10 @@ namespace Altered.Main
             _comparerManager.Register(customComparer);
         }
 
-        internal List<DiffEntry> Generate<TValue>(TValue original, TValue modified, Expression<Func<TValue, object>>[]? propertySelectors = null, bool? ignore = null)
+        public List<DiffEntry> Generate<TValue>(TValue original, TValue modified, Expression<Func<TValue, object>>[]? propertySelectors = null, bool? ignore = null) 
+            => Generate(original, modified, new HashSet<object>(ReferenceEqualityComparer.Instance), propertySelectors, ignore);
+
+        private List<DiffEntry> Generate<TValue>(TValue original, TValue modified, HashSet<object> visited, Expression<Func<TValue, object>>[]? propertySelectors = null, bool? ignore = null)
         {
             if (!_typeConfiguratorManager.IsTypeConfigured<TValue>())
                 _typeConfiguratorManager.Configure<TValue>();
@@ -81,14 +85,22 @@ namespace Altered.Main
                 if (ShouldSkipProperty<TValue>(prop))
                     continue;
 
-                if (TryBuildDiffEntry(prop, original, modified, out var entry))
+                if (TryBuildDiffEntry(prop, original, modified, visited, out var entry))
                     differentEntries.Add(entry!);
             }
 
             return differentEntries;
         }
 
-        internal void ApplyPropertySelectors<TValue>(Expression<Func<TValue, object>>[] propertySelectors)
+        public void ClearAllConfigurations()
+        {
+            _comparerManager?.Clear();
+            _typeConfiguratorManager?.ClearAll();
+        }
+
+        // Private
+
+        private void ApplyPropertySelectors<TValue>(Expression<Func<TValue, object>>[] propertySelectors)
         {
             if (propertySelectors is null || !propertySelectors.Any())
                 return;
@@ -103,32 +115,12 @@ namespace Altered.Main
                 _typeConfiguratorManager.IncludeProperties(propertySelectors);
         }
 
-        internal bool ShouldSkipProperty<TValue>(PropertyInfo prop)
-        {
-            if (!prop.CanRead)
-                return true;
-
-            if (prop.GetCustomAttribute<IgnoreInDiffAttribute>() is not null)
-                return true;
-
-            if (!_typeConfiguratorManager.IsTypeConfigured<TValue>())
-                return false;
-
-            if (_typeConfiguratorManager.IsUsingIgnore<TValue>())
-                return _typeConfiguratorManager.PropertyIsIgnored<TValue>(prop.Name);
-
-            if (_typeConfiguratorManager.IsUsingInclude<TValue>())
-                return !_typeConfiguratorManager.PropertyIsIncluded<TValue>(prop.Name);
-
-            return false;
-        }
-
-        internal bool TryBuildDiffEntry<TValue>(PropertyInfo prop, TValue original, TValue modified, out DiffEntry? entry)
+        private bool TryBuildDiffEntry<TValue>(PropertyInfo prop, TValue original, TValue modified, HashSet<object> visited, out DiffEntry? entry)
         {
             var oldValue = prop.GetValue(original);
             var newValue = prop.GetValue(modified);
 
-            if (AreValuesEqual(oldValue, newValue))
+            if (AreValuesEqual(oldValue, newValue, visited))
             {
                 entry = null;
                 return false;
@@ -144,13 +136,7 @@ namespace Altered.Main
             return true;
         }
 
-        internal void ClearAllConfigurations()
-        {
-            _comparerManager?.Clear();
-            _typeConfiguratorManager?.ClearAll();
-        }
-
-        internal bool AreValuesEqual(object? original, object? modified, HashSet<object>? visited = null)
+        private bool AreValuesEqual(object? original, object? modified, HashSet<object>? visited)
         {
             visited ??= new HashSet<object>(ReferenceEqualityComparer.Instance);
 
@@ -176,7 +162,7 @@ namespace Altered.Main
             return CompareComplex(original, modified, visited);
         }
 
-        internal static bool IsSimpleType(Type type)
+        private static bool IsSimpleType(Type type)
         {
             return type.IsPrimitive || type == typeof(string) || type.IsEnum ||
                    type == typeof(decimal) || type == typeof(DateTime) ||
@@ -184,7 +170,7 @@ namespace Altered.Main
                    type == typeof(byte[]);
         }
 
-        internal bool CompareCollections(IEnumerable seqA, IEnumerable seqB, HashSet<object> visited)
+        private bool CompareCollections(IEnumerable seqA, IEnumerable seqB, HashSet<object> visited)
         {
             var listA = seqA.Cast<object>().ToList();
             var listB = seqB.Cast<object>().ToList();
@@ -199,20 +185,11 @@ namespace Altered.Main
             return true;
         }
 
-        internal bool CompareComplex(object original, object modified, HashSet<object> visited)
+        private bool CompareComplex(object original, object modified, HashSet<object> visited)
         {
-            var type = original.GetType();
-            // Get the generic Generate method
-            var method = typeof(DiffEngine)
-                .GetMethod(nameof(Generate), BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
-                ?.MakeGenericMethod(type);
+            var diffs = Generate((dynamic)original, (dynamic)modified, visited, null, null);
 
-            if (method == null)
-                throw new InvalidOperationException($"Generate method not found for type {type}");
-
-            var diffs = (IEnumerable<DiffEntry>)method.Invoke(this, new object[] { original, modified, null, null });
-
-            return !diffs.Any();
+            return diffs.Count == 0;
         }
 
         internal bool InvokeCustomComparer(Type type, object original, object modified)
@@ -243,6 +220,26 @@ namespace Altered.Main
             });
 
             return wrapper(original, modified);
+        }
+
+        internal bool ShouldSkipProperty<TValue>(PropertyInfo prop)
+        {
+            if (!prop.CanRead)
+                return true;
+
+            if (prop.GetCustomAttribute<IgnoreInDiffAttribute>() is not null)
+                return true;
+
+            if (!_typeConfiguratorManager.IsTypeConfigured<TValue>())
+                return false;
+
+            if (_typeConfiguratorManager.IsUsingIgnore<TValue>())
+                return _typeConfiguratorManager.PropertyIsIgnored<TValue>(prop.Name);
+
+            if (_typeConfiguratorManager.IsUsingInclude<TValue>())
+                return !_typeConfiguratorManager.PropertyIsIncluded<TValue>(prop.Name);
+
+            return false;
         }
     }
 }
